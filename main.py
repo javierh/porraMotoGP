@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
@@ -163,6 +164,7 @@ def help_command(update: Update, context: CallbackContext) -> None:
         "/start - Inicia la interacción con el bot.\n"
         "/porra - Registra tu porra para la próxima carrera.\n"
         "/puntuaciones - Muestra un listado con los datos de nombre y puntuación de los participantes ordenado de mayor a menor por puntos.\n"
+        "/mrgrid - Muestra los tiempos de vuelta de los pilotos en la última sesión de clasificación.\n"
         "/help - Muestra este mensaje de ayuda.\n\n"
         "Para registrar tu porra, usa el comando /porra y sigue las instrucciones para ingresar tus predicciones para la sprint race y la carrera principal.\n"
         "Te recordamos que no se admiten modificaciones en la predicción, elige sabiamente tus pilotos"
@@ -189,6 +191,33 @@ def show_scores(update: Update, context: CallbackContext) -> None:
 
     update.message.reply_text(message)
 
+# Función para manejar el comando /mrgrid
+def mrgrid(update: Update, context: CallbackContext) -> None:
+    today = datetime.now()
+    next_race = min(
+        (circuit for circuit in circuits if datetime.strptime(circuit['date_start'].split('T')[0], '%Y-%m-%d') >= today),
+        key=lambda x: datetime.strptime(x['date_start'].split('T')[0], '%Y-%m-%d') - today
+    )
+    circuit_name = next_race['name']  # Obtener el nombre del circuito de los argumentos
+    file_path = f"grid/grid_{circuit_name.replace(' ', '_')}.json"
+
+    if not os.path.exists(file_path):
+        update.message.reply_text(f"No se encontró el archivo para el circuito: {circuit_name}")
+        return
+
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+    if 'classifications' not in data:
+        update.message.reply_text(f"No se encontraron clasificaciones en el archivo para el circuito: {circuit_name}")
+        return
+
+    message = "Listado de pilotos y sus tiempos:\n"
+    for entry in data['classifications']:
+        message += f"{entry['position']}: {entry['full_name']} - {entry['best_lap_time']}\n"
+
+    update.message.reply_text(message)
+
 def main() -> None:
     updater = Updater(TOKEN)
     dispatcher = updater.dispatcher
@@ -196,6 +225,8 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("puntuaciones", show_scores))
     # Añadir el manejador para el comando /help
     dispatcher.add_handler(CommandHandler("help", help_command))
+    # Registro del comando /mrgrid en el dispatcher
+    dispatcher.add_handler(CommandHandler("mrgrid", mrgrid))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('porra', porra)],
