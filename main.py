@@ -155,9 +155,28 @@ def handle_results_input(update: Update, context: CallbackContext) -> None:
     # Handle results input
     pass
 
+def show_scores(update: Update, context: CallbackContext) -> None:
+    try:
+        with open('results_puntuaciones.json', 'r') as f:
+            scores = json.load(f)
+    except FileNotFoundError:
+        update.message.reply_text("No hay puntuaciones disponibles.")
+        return
+
+    # Ordenar los participantes por puntos de mayor a menor
+    sorted_scores = sorted(scores.items(), key=lambda x: x[1]['points'], reverse=True)
+
+    # Crear el mensaje con el listado de participantes y sus puntos
+    message = "Puntuaciones de los participantes:\n\n"
+    for user_id, data in sorted_scores:
+        message += f"{data['user_name']}: {data['points']} puntos\n"
+
+    update.message.reply_text(message)
+
 def main() -> None:
     updater = Updater(TOKEN)
     dispatcher = updater.dispatcher
+    dispatcher.add_handler(CommandHandler("puntuaciones", show_scores))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('porra', porra)],
