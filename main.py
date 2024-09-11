@@ -30,7 +30,7 @@ SPRINT_FIRST, SPRINT_SECOND, SPRINT_THIRD, RACE_FIRST, RACE_SECOND, RACE_THIRD =
 def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     update.message.reply_text(f"¡Hola, {user.first_name}! Bienvenido al bot de porras de MotoGP.")
-    update.message.reply_text("Usa /porra para hacer una predicción.")
+    update.message.reply_text("Usa /porra para hacer una predicción.\n Usa /help para ver los comandos disponibles.")
 
 # Función para iniciar la porra
 def porra(update: Update, context: CallbackContext) -> int:
@@ -155,6 +155,22 @@ def handle_results_input(update: Update, context: CallbackContext) -> None:
     # Handle results input
     pass
 
+# Función para manejar el comando /help
+def help_command(update: Update, context: CallbackContext) -> None:
+    help_message = (
+        "Bienvenido al sistema de porra de MotoGP!\n\n"
+        "Aquí tienes los comandos disponibles para interactuar con el bot:\n"
+        "/start - Inicia la interacción con el bot.\n"
+        "/porra - Registra tu porra para la próxima carrera.\n"
+        "/puntuaciones - Muestra un listado con los datos de nombre y puntuación de los participantes ordenado de mayor a menor por puntos.\n"
+        "/help - Muestra este mensaje de ayuda.\n\n"
+        "Para registrar tu porra, usa el comando /porra y sigue las instrucciones para ingresar tus predicciones para la sprint race y la carrera principal.\n"
+        "Te recordamos que no se admiten modificaciones en la predicción, elige sabiamente tus pilotos"
+        "¡Buena suerte!"
+    )
+    update.message.reply_text(help_message)
+
+
 def show_scores(update: Update, context: CallbackContext) -> None:
     try:
         with open('results_puntuaciones.json', 'r') as f:
@@ -176,7 +192,10 @@ def show_scores(update: Update, context: CallbackContext) -> None:
 def main() -> None:
     updater = Updater(TOKEN)
     dispatcher = updater.dispatcher
+    # Añadir el manejador para el comando /puntuaciones
     dispatcher.add_handler(CommandHandler("puntuaciones", show_scores))
+    # Añadir el manejador para el comando /help
+    dispatcher.add_handler(CommandHandler("help", help_command))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('porra', porra)],
