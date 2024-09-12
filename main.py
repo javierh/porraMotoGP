@@ -1,6 +1,7 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+import pytz
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 import pandas as pd
@@ -8,12 +9,13 @@ import pandas as pd
 # Cargar configuración
 with open('config.json', 'r') as config_file:
     config = json.load(config_file)
+    TIMEZONE = config['TIMEZONE']
 
 # Token del bot
 TOKEN = config['TOKEN']
 
 # Load JSON data
-with open(config['DATA_FILE'], 'r') as f:
+with open('data.json', 'r') as f:
     data = json.load(f)
     pilots = [rider['full_name'] for rider in data['rider'] if rider['full_name']]
     circuits = data['circuits']
@@ -44,6 +46,30 @@ def porra(update: Update, context: CallbackContext) -> int:
     context.user_data['race'] = next_race['name']
     race_name = next_race['name']
     file_name = f"porra_{race_name.replace(' ', '_')}.json"
+    grid_file_name = f"grid/grid_{race_name.replace(' ', '_')}.json"
+
+    # Leer la hora del evento desde el archivo JSON
+    with open(grid_file_name, 'r') as file:
+        grid_data = json.load(file)
+        event_time_str = grid_data['session']['date']  # Obtener la hora de inicio del primer evento
+        event_time = datetime.strptime(event_time_str, "%Y-%m-%dT%H:%M:%S%z")
+
+    # Obtener la zona horaria del circuito, usar una predeterminada si no está presente
+    circuit_timezone = next_race.get('timezone', TIMEZONE)
+
+    # Convertir la hora del evento a la zona horaria del circuito
+    event_time_circuit_tz = event_time.astimezone(pytz.timezone(circuit_timezone))
+
+    # Añadir una hora a la hora del evento
+    event_time_plus_one_hour = event_time_circuit_tz + timedelta(hours=1)
+
+    # Obtener la hora actual en la zona horaria especificada en config.json
+    current_time = datetime.now(pytz.timezone(TIMEZONE))
+
+    # Comparar las horas
+    if current_time > event_time_plus_one_hour:
+        update.message.reply_text("No puedes enviar la porra para el evento actual porque la hora límite ha pasado.")
+        return ConversationHandler.END
 
     # Verificar si el usuario ya ha realizado una predicción para este circuito
     try:

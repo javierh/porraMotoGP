@@ -3,5 +3,8 @@
     "ADMIN_IDS": [ID_TELEGRAM_ADMIN_USER],
     "DATA_FILE": "data.json",
     "SEASON_ID": "dd12382e-1d9f-46ee-a5f7-c5104db28e43", 
-    "MOTOGP_ID": "e8c110ad-64aa-4e8e-8a86-f2f152f6a942" 
+    "MOTOGP_ID": "e8c110ad-64aa-4e8e-8a86-f2f152f6a942",
+    "TIMEZONE": "Europe/Madrid",
+    "TIMEZONE_API_KEY": "YOUR TIMEZONEDB.COM API KEY",
+    "GOOGLE_MAPS_API_KEY": "YOUR GOOGLE MAPS API KEY"
 }

@@ -6,6 +6,7 @@ import os
 with open('data.json', 'r') as data_file:
     data = json.load(data_file)
 circuits = data['circuits']
+print(circuits)
 
 # Función para obtener la clasificación de una sesión
 def get_session_classification(session_id):
@@ -21,6 +22,10 @@ def get_session_classification(session_id):
 for circuit in circuits:
     circuit_name = circuit['name'].replace(' ', '_').replace('/', '_')
     results = []
+
+    if 'sessions' not in circuit:
+        print(f"No sessions found for circuit {circuit['name']}")
+        continue
 
     for session in circuit['sessions']:
         if session['type'] in ['SPR', 'RAC']:
