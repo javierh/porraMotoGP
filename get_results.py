@@ -6,7 +6,6 @@ import os
 with open('data.json', 'r') as data_file:
     data = json.load(data_file)
 circuits = data['circuits']
-print(circuits)
 
 # Función para obtener la clasificación de una sesión
 def get_session_classification(session_id):

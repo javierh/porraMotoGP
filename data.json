@@ -1,386 +1,4 @@
 {
-    "circuits": [
-        {
-            "id": "276ffee0-7040-49ca-a3a5-ab7b52685d3c",
-            "date_start": "2024-03-08",
-            "name": "Lusail International Circuit",
-            "timezone": "Asia/Qatar",
-            "sessions": [
-                {
-                    "id": "0de884e7-4d19-4ff7-82fe-82d1262aea59",
-                    "type": "SPR"
-                },
-                {
-                    "id": "5b0827b6-7faf-4a1b-a4c2-de630ba1941a",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "1cc0f19e-b77d-4bf5-8ca1-221b49a83593",
-            "date_start": "2024-03-22",
-            "name": "Aut\u00f3dromo Internacional do Algarve",
-            "timezone": "Europe/Lisbon",
-            "sessions": [
-                {
-                    "id": "52d65702-ff21-4663-89d0-36acf5185ac6",
-                    "type": "SPR"
-                },
-                {
-                    "id": "52186f2e-44bd-40d9-9ac6-a40422f7aeba",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "c9d2b49e-2b65-4975-9e4a-80d5429cc1b2",
-            "date_start": "2024-04-12",
-            "name": "Circuit Of The Americas",
-            "timezone": "America/Chicago",
-            "sessions": [
-                {
-                    "id": "6caaceff-a883-4d73-ac1b-a299e3674ac7",
-                    "type": "SPR"
-                },
-                {
-                    "id": "c3173312-e95f-433d-82a4-b256ee7a1db5",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "e561059a-2048-4996-a6c5-f564f9478b66",
-            "date_start": "2024-04-26",
-            "name": "Circuito de Jerez - \u00c1ngel Nieto",
-            "timezone": "Europe/Madrid",
-            "sessions": [
-                {
-                    "id": "f00b0fe0-6c99-4128-a066-6c08da53b1b3",
-                    "type": "SPR"
-                },
-                {
-                    "id": "fc1f820c-e751-41a5-90ea-d41e476e2a69",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "fb3311d5-6ff0-4a83-8edc-dcbd2b9014f1",
-            "date_start": "2024-05-10",
-            "name": "Le Mans",
-            "timezone": "Europe/Paris",
-            "sessions": [
-                {
-                    "id": "ea0b9799-26eb-46fb-a8ff-44d43a563c12",
-                    "type": "SPR"
-                },
-                {
-                    "id": "f50ae0d2-595a-42b8-b820-9c8d85ec6a4f",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "3ca2d7a2-7f51-411b-ba69-3a8528207868",
-            "date_start": "2024-05-24",
-            "name": "Circuit de Barcelona-Catalunya",
-            "timezone": "Europe/Madrid",
-            "sessions": [
-                {
-                    "id": "a52ed387-c7d4-43cd-8f38-b81ef62e32c2",
-                    "type": "SPR"
-                },
-                {
-                    "id": "e93dc785-443a-48c9-ac6c-c5d18bf9f174",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "bb2220b6-1508-4d13-b73e-ecd1ecee8d15",
-            "date_start": "2024-05-31",
-            "name": "Autodromo Internazionale del Mugello",
-            "timezone": "Europe/Rome",
-            "sessions": [
-                {
-                    "id": "e8797cd9-2eed-4644-9bc0-92a36dc1667c",
-                    "type": "SPR"
-                },
-                {
-                    "id": "ca9169f6-8351-46f5-8faf-736679c6f9bd",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "3eea1a6b-7fce-41e5-bc0f-d8a3523e3957",
-            "date_start": "2024-06-28",
-            "name": "TT Circuit Assen",
-            "timezone": "Europe/Amsterdam",
-            "sessions": [
-                {
-                    "id": "c6830b18-9abb-4a12-911a-186204ae57a7",
-                    "type": "SPR"
-                },
-                {
-                    "id": "da77da83-762a-4ad4-ab5c-ee3fa4eae903",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "7ef0ef89-1477-4e70-a117-f209098e31d3",
-            "date_start": "2024-07-05",
-            "name": "Sachsenring",
-            "timezone": "Europe/Berlin",
-            "sessions": [
-                {
-                    "id": "4ec5cad7-004d-4798-a3cc-dbaac8dc333f",
-                    "type": "SPR"
-                },
-                {
-                    "id": "eba7596d-e7c8-42ab-9b01-378e9000ccd6",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "9e44ac05-9362-4edf-a87a-d4aae85373c1",
-            "date_start": "2024-08-02",
-            "name": "Silverstone Circuit",
-            "timezone": "Europe/London",
-            "sessions": [
-                {
-                    "id": "95a823f2-9ea0-424d-9c9b-bcd2fa96100f",
-                    "type": "SPR"
-                },
-                {
-                    "id": "a5f9dac9-dfda-42cc-8157-7de877fe7617",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "3787fdac-7a1d-4c6f-95f0-76dfdde8b0c6",
-            "date_start": "2024-08-16",
-            "name": "Red Bull Ring - Spielberg",
-            "timezone": "Europe/Vienna",
-            "sessions": [
-                {
-                    "id": "028dd4c9-4c87-42e0-90e7-be749e5e5e2d",
-                    "type": "SPR"
-                },
-                {
-                    "id": "9b28a22d-8152-4217-97bf-24e739471223",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "ff278afb-ee9a-4237-a70a-ea83eb37a27f",
-            "date_start": "2024-08-30",
-            "name": "MotorLand Arag\u00f3n",
-            "timezone": "Europe/Madrid",
-            "sessions": [
-                {
-                    "id": "c59ff4db-05e9-4beb-9f90-a955f15c16cd",
-                    "type": "SPR"
-                },
-                {
-                    "id": "a54b0745-dcdb-4127-9a26-ee721b2df935",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "90a7a379-00f2-4e73-9c72-1c190b27c730",
-            "date_start": "2024-09-06",
-            "name": "Misano World Circuit Marco Simoncelli",
-            "timezone": "Europe/Rome",
-            "sessions": [
-                {
-                    "id": "0f3f8a6c-41f5-4c0c-b9ee-1764a889128e",
-                    "type": "SPR"
-                },
-                {
-                    "id": "5f7a1f1a-3ca0-4319-9723-7c9d322dbe8a",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "7533f0a8-d411-4d9b-b07d-28f77022333f",
-            "date_start": "2024-09-20",
-            "name": "Misano World Circuit Marco Simoncelli",
-            "timezone": "Europe/Rome",
-            "sessions": [
-                {
-                    "id": "3a6658aa-a395-4275-8aa7-86a3c27139f8",
-                    "type": "SPR"
-                },
-                {
-                    "id": "165acbd7-415e-4012-ad79-d1d68e49568a",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "c4f2864e-f054-4843-baef-ba32d91b615a",
-            "date_start": "2024-09-27",
-            "name": "Pertamina Mandalika Circuit",
-            "timezone": "Asia/Makassar",
-            "sessions": [
-                {
-                    "id": "05577c92-f474-4541-a815-30c8cf33ea1f",
-                    "type": "SPR"
-                },
-                {
-                    "id": "24543226-887b-4ece-a1ae-3bd54b380060",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "7de803e1-8fcf-4fb9-b0c7-ac06a046963e",
-            "date_start": "2024-10-04",
-            "name": "Mobility Resort Motegi",
-            "timezone": "Asia/Tokyo",
-            "sessions": [
-                {
-                    "id": "8925db8e-2da4-469d-ab9a-ca91d06a1192",
-                    "type": "SPR"
-                },
-                {
-                    "id": "7f498c84-689b-4539-9787-787e83ac70ac",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "18905751-bb2b-42ff-85f8-e4052c9b79b0",
-            "date_start": "2024-10-18",
-            "name": "Phillip Island",
-            "timezone": "Australia/Melbourne",
-            "sessions": [
-                {
-                    "id": "3b9fdef8-4c6d-48f4-b132-e32d79937af7",
-                    "type": "SPR"
-                },
-                {
-                    "id": "c7ea9bb7-1c5c-43aa-b78b-1715e20dbec6",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "0b8ae01f-fa39-425e-85b0-4cf76bc015e7",
-            "date_start": "2024-10-25",
-            "name": "Chang International Circuit",
-            "timezone": "Asia/Bangkok",
-            "sessions": [
-                {
-                    "id": "de07aa33-3d10-4d88-8a1b-ca104d3c5da2",
-                    "type": "SPR"
-                },
-                {
-                    "id": "bb1e66d7-2785-4db0-82a3-94394d14f5b3",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "914e4a9e-481c-4c3c-9169-291c502db16b",
-            "date_start": "2024-11-01",
-            "name": "Petronas Sepang International Circuit",
-            "timezone": "Asia/Kuala_Lumpur",
-            "sessions": [
-                {
-                    "id": "cedf37b0-7743-4c53-92d5-e21ec53d683a",
-                    "type": "SPR"
-                },
-                {
-                    "id": "06f151a8-b37d-4c1b-b397-5fd33169893f",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "8ac177db-2867-4515-a6dd-b63532993817",
-            "date_start": "2024-11-15",
-            "name": "Circuit Ricardo Tormo",
-            "timezone": "Europe/Madrid",
-            "sessions": [
-                {
-                    "id": "e7e39d83-cc87-4603-9171-9890127e46fe",
-                    "type": "SPR"
-                },
-                {
-                    "id": "28a27c15-040c-4acd-bdfb-c08efcc30856",
-                    "type": "RAC"
-                }
-            ]
-        },
-        {
-            "id": "fc73530a-7d68-4a25-8d86-9cb932a3bca9",
-            "date_start": "2023-11-28",
-            "name": "Circuit Ricardo Tormo",
-            "timezone": "Europe/Madrid",
-            "sessions": []
-        },
-        {
-            "id": "642570d3-34e5-4388-9826-c28be6a897de",
-            "date_start": "2024-02-06",
-            "name": "Petronas Sepang International Circuit",
-            "timezone": "Asia/Kuala_Lumpur",
-            "sessions": []
-        },
-        {
-            "id": "cdf63a66-46f9-4af5-bf3f-27a8ef674ea9",
-            "date_start": "2024-02-19",
-            "name": "Lusail International Circuit",
-            "timezone": "Asia/Qatar",
-            "sessions": []
-        },
-        {
-            "id": "37f21714-6331-4871-8cc6-d6a4eb7ac9f2",
-            "date_start": "2024-02-28",
-            "name": "Circuito de Jerez - \u00c1ngel Nieto",
-            "timezone": "Europe/Madrid"
-        },
-        {
-            "id": "2d0686c3-d9fa-4d11-91ef-a536f13494fa",
-            "date_start": "2024-04-29",
-            "name": "Circuito de Jerez - \u00c1ngel Nieto",
-            "timezone": "Europe/Madrid",
-            "sessions": []
-        },
-        {
-            "id": "776db12c-3ca7-4d2c-ab35-ef2b86a1a542",
-            "date_start": "2024-04-30",
-            "name": "Circuito de Jerez - \u00c1ngel Nieto",
-            "timezone": "Europe/Madrid"
-        },
-        {
-            "id": "4ed1473d-5791-43af-8b9d-375209d19b84",
-            "date_start": "2024-06-03",
-            "name": "Autodromo Internazionale del Mugello",
-            "timezone": "Europe/Rome",
-            "sessions": []
-        },
-        {
-            "id": "5274f415-acf4-4610-895d-d3098fb635ff",
-            "date_start": "2024-08-19",
-            "name": "Red Bull Ring - Spielberg",
-            "timezone": "Europe/Vienna"
-        },
-        {
-            "id": "79e422c6-74f5-421c-b9f4-35c6adff7a9c",
-            "date_start": "2024-09-09",
-            "name": "Misano World Circuit Marco Simoncelli",
-            "timezone": "Europe/Rome",
-            "sessions": []
-        }
-    ],
     "rider": [
         {
             "id": "5cbd7eb6-ccfc-4b9f-aad1-ede25d394f7b",
@@ -489,6 +107,182 @@
         {
             "id": "0c9405ff-e879-498c-964d-b39409361a6c",
             "full_name": "Lorenzo Savadori"
+        }
+    ],
+    "circuits": [
+        {
+            "id": "276ffee0-7040-49ca-a3a5-ab7b52685d3c",
+            "date_start": "2024-03-08",
+            "name": "Lusail International Circuit",
+            "timezone": "Asia/Qatar"
+        },
+        {
+            "id": "1cc0f19e-b77d-4bf5-8ca1-221b49a83593",
+            "date_start": "2024-03-22",
+            "name": "Aut\u00f3dromo Internacional do Algarve",
+            "timezone": "Europe/Lisbon"
+        },
+        {
+            "id": "c9d2b49e-2b65-4975-9e4a-80d5429cc1b2",
+            "date_start": "2024-04-12",
+            "name": "Circuit Of The Americas",
+            "timezone": "America/Chicago"
+        },
+        {
+            "id": "e561059a-2048-4996-a6c5-f564f9478b66",
+            "date_start": "2024-04-26",
+            "name": "Circuito de Jerez - \u00c1ngel Nieto",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "fb3311d5-6ff0-4a83-8edc-dcbd2b9014f1",
+            "date_start": "2024-05-10",
+            "name": "Le Mans",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "3ca2d7a2-7f51-411b-ba69-3a8528207868",
+            "date_start": "2024-05-24",
+            "name": "Circuit de Barcelona-Catalunya",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "bb2220b6-1508-4d13-b73e-ecd1ecee8d15",
+            "date_start": "2024-05-31",
+            "name": "Autodromo Internazionale del Mugello",
+            "timezone": "Europe/Rome"
+        },
+        {
+            "id": "3eea1a6b-7fce-41e5-bc0f-d8a3523e3957",
+            "date_start": "2024-06-28",
+            "name": "TT Circuit Assen",
+            "timezone": "Europe/Amsterdam"
+        },
+        {
+            "id": "7ef0ef89-1477-4e70-a117-f209098e31d3",
+            "date_start": "2024-07-05",
+            "name": "Sachsenring",
+            "timezone": "Europe/Berlin"
+        },
+        {
+            "id": "9e44ac05-9362-4edf-a87a-d4aae85373c1",
+            "date_start": "2024-08-02",
+            "name": "Silverstone Circuit",
+            "timezone": "Europe/London"
+        },
+        {
+            "id": "3787fdac-7a1d-4c6f-95f0-76dfdde8b0c6",
+            "date_start": "2024-08-16",
+            "name": "Red Bull Ring - Spielberg",
+            "timezone": "Europe/Vienna"
+        },
+        {
+            "id": "ff278afb-ee9a-4237-a70a-ea83eb37a27f",
+            "date_start": "2024-08-30",
+            "name": "MotorLand Arag\u00f3n",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "90a7a379-00f2-4e73-9c72-1c190b27c730",
+            "date_start": "2024-09-06",
+            "name": "Misano World Circuit Marco Simoncelli",
+            "timezone": "Europe/Rome"
+        },
+        {
+            "id": "7533f0a8-d411-4d9b-b07d-28f77022333f",
+            "date_start": "2024-09-20",
+            "name": "Misano World Circuit Marco Simoncelli",
+            "timezone": "Europe/Rome"
+        },
+        {
+            "id": "c4f2864e-f054-4843-baef-ba32d91b615a",
+            "date_start": "2024-09-27",
+            "name": "Pertamina Mandalika Circuit",
+            "timezone": "Asia/Makassar"
+        },
+        {
+            "id": "7de803e1-8fcf-4fb9-b0c7-ac06a046963e",
+            "date_start": "2024-10-04",
+            "name": "Mobility Resort Motegi",
+            "timezone": "Asia/Tokyo"
+        },
+        {
+            "id": "18905751-bb2b-42ff-85f8-e4052c9b79b0",
+            "date_start": "2024-10-18",
+            "name": "Phillip Island",
+            "timezone": "Australia/Melbourne"
+        },
+        {
+            "id": "0b8ae01f-fa39-425e-85b0-4cf76bc015e7",
+            "date_start": "2024-10-25",
+            "name": "Chang International Circuit",
+            "timezone": "Asia/Bangkok"
+        },
+        {
+            "id": "914e4a9e-481c-4c3c-9169-291c502db16b",
+            "date_start": "2024-11-01",
+            "name": "Petronas Sepang International Circuit",
+            "timezone": "Asia/Kuala_Lumpur"
+        },
+        {
+            "id": "8ac177db-2867-4515-a6dd-b63532993817",
+            "date_start": "2024-11-15",
+            "name": "Circuit Ricardo Tormo",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "fc73530a-7d68-4a25-8d86-9cb932a3bca9",
+            "date_start": "2023-11-28",
+            "name": "Circuit Ricardo Tormo",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "642570d3-34e5-4388-9826-c28be6a897de",
+            "date_start": "2024-02-06",
+            "name": "Petronas Sepang International Circuit",
+            "timezone": "Asia/Kuala_Lumpur"
+        },
+        {
+            "id": "cdf63a66-46f9-4af5-bf3f-27a8ef674ea9",
+            "date_start": "2024-02-19",
+            "name": "Lusail International Circuit",
+            "timezone": "Asia/Qatar"
+        },
+        {
+            "id": "37f21714-6331-4871-8cc6-d6a4eb7ac9f2",
+            "date_start": "2024-02-28",
+            "name": "Circuito de Jerez - \u00c1ngel Nieto",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "2d0686c3-d9fa-4d11-91ef-a536f13494fa",
+            "date_start": "2024-04-29",
+            "name": "Circuito de Jerez - \u00c1ngel Nieto",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "776db12c-3ca7-4d2c-ab35-ef2b86a1a542",
+            "date_start": "2024-04-30",
+            "name": "Circuito de Jerez - \u00c1ngel Nieto",
+            "timezone": "Europe/Madrid"
+        },
+        {
+            "id": "4ed1473d-5791-43af-8b9d-375209d19b84",
+            "date_start": "2024-06-03",
+            "name": "Autodromo Internazionale del Mugello",
+            "timezone": "Europe/Rome"
+        },
+        {
+            "id": "5274f415-acf4-4610-895d-d3098fb635ff",
+            "date_start": "2024-08-19",
+            "name": "Red Bull Ring - Spielberg",
+            "timezone": "Europe/Vienna"
+        },
+        {
+            "id": "79e422c6-74f5-421c-b9f4-35c6adff7a9c",
+            "date_start": "2024-09-09",
+            "name": "Misano World Circuit Marco Simoncelli",
+            "timezone": "Europe/Rome"
         }
     ]
 }

@@ -1,6 +1,6 @@
 import requests
 import json
-
+import time
 def get_season_id():
     try:
         with open('config.json', 'r') as f:
@@ -41,7 +41,7 @@ def get_timezone(circuit_name):
         config = json.load(config_file)
         api_key = config['TIMEZONE_API_KEY']
     url = f"http://api.timezonedb.com/v2.1/get-time-zone?key={api_key}&format=json&by=position&lat={lat}&lng={lon}"
-    
+    time.sleep(1.5) # Freeze for 1.5 second to avoid rate limiting of free accounts
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
@@ -76,10 +76,18 @@ def get_circuits(season_id):
 
 def update_data_json(circuits):
     try:
-        with open('data.json', 'w') as f:
-            json.dump(circuits, f, indent=4)
-    except Exception as e:
-        print(f"Error writing to data.json: {e}")
+        with open('data.json', 'r') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {}
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+        data = {}
+
+    data['circuits'] = circuits
+
+    with open('data.json', 'w') as f:
+        json.dump(data, f, indent=4)
 
 def main():
     season_id = get_season_id()
