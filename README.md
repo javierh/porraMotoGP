@@ -1,31 +1,76 @@
-# porraMotoGP
+# MotoGP Prediction Bot
 
-## Project Description
+MotoGP Prediction Bot is a Telegram bot that allows users to make predictions for MotoGP races. The bot provides functionalities to manage predictions, view race schedules, and more.
 
-This project is a Telegram bot designed to manage betting pools for MotoGP races. Users can place their bets via the bot, and it will keep track of all bets and results. This bot download all the data from the MotoGP API and store it in json files.
+## Features
 
-## Technologies Used
+- Make predictions for upcoming MotoGP races.
+- View race schedules and results.
+- Admin functionalities to update data.
 
-- Python
-- Telegram Bot API
+## Changelog
 
-## Dependencies
+### v1.1.0 (2024-09-16)
 
-To run this project, you need the following dependencies:
+- Added Docker support with `Dockerfile` and `docker-compose.yml`.
+- Implemented admin-only command `/update_data`.
+- Improved error handling for missing sessions and races.
+- Translated all texts to English.
 
-- `python-telegram-bot`
-- `requests`
+### v1.0.0 (2024-09-09)
 
-You can install the required Python packages using pip:
+- Initial release with basic functionalities:
+  - Make predictions for races.
+  - View race schedules.
+  - Basic error handling.
 
-```bash
-pip install python-telegram-bot requests
-```
+## Requirements
 
-## Usage for a new season
-Call the API endpoint 
-```bash
-https://api.motogp.pulselive.com/motogp/v1/results/seasons
-```
-to get the list of all the seasons available. Then, copy the season ID to your config.json file.
+- Python 3.9+
+- Telegram Bot API token
+- TimeZoneDB API key
+- Google Maps API key
 
+## Installation
+
+1. Clone the repository:
+
+   ```sh
+   git clone https://github.com/yourusername/porraMotoGP.git
+   cd porraMotoGP
+   ```
+
+2. Create a virtual environment and activate it:
+
+   ```sh
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Install the dependencies:
+
+   ```sh
+    pip install -r requirements.txt
+    ```
+
+4. Modify config_sample.json file with your configuration and rename to config.json
+
+5. Run the import data script:
+
+   ```sh
+   bash import_data.sh
+   ```
+
+6. Run the bot:
+    Using Python
+    
+    ```sh
+    python3 main.py
+    ```
+
+Using Docker
+
+   ```sh
+   docker-compose build
+   docker-compose up -d
+   ```
