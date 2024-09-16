@@ -6,4 +6,4 @@ services:
     container_name: porra_motogp_app
     volumes:
       - .:/app
-    command: python get_circuits.py
+    command: python3 main.py
