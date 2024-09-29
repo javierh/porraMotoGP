@@ -20,6 +20,7 @@ with open('data.json', 'r') as f:
     data = json.load(f)
     pilots = [rider['full_name'] for rider in data['rider'] if rider['full_name']]
     circuits = data['circuits']
+    
 
 # DataFrame para almacenar las predicciones
 predictions = pd.DataFrame(columns=['user_id', 'username', 'race', 'prediction'])
@@ -34,27 +35,45 @@ SPRINT_FIRST, SPRINT_SECOND, SPRINT_THIRD, RACE_FIRST, RACE_SECOND, RACE_THIRD =
 def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     update.message.reply_text(f"Hi, {user.first_name}! Welcome to the MotoGP betting bot.")
-    update.message.reply_text("Use /porra to make a prediction.\n Use /help to see the available commands.")
+    update.message.reply_text("Use /porra to make a prediction.\n Use /rules to know the rules of the betting system. \n Use /help to see the available commands.")
 
 # Función para iniciar la porra
 def porra(update: Update, context: CallbackContext) -> int:
     # Seleccionar el circuito más próximo a la fecha actual
     today = datetime.now()
+    valid_circuits = [
+        circuit for circuit in circuits
+        if datetime.strptime(circuit['date_start'].split('T')[0], '%Y-%m-%d') <= today <= datetime.strptime(circuit['date_start'].split('T')[0], '%Y-%m-%d') + timedelta(days=3)
+    ]
+    
+    if not valid_circuits:
+        update.message.reply_text("No valid circuits found for the current date.")
+        return ConversationHandler.END
+
     next_race = min(
-        (circuit for circuit in circuits if datetime.strptime(circuit['date_start'].split('T')[0], '%Y-%m-%d') >= today),
+        valid_circuits,
         key=lambda x: datetime.strptime(x['date_start'].split('T')[0], '%Y-%m-%d') - today
     )
+    
     context.user_data['race'] = next_race['name']
-    race_name = next_race['name']
-    file_name = f"porra_{race_name.replace(' ', '_')}.json"
-    grid_file_name = f"grid/grid_{race_name.replace(' ', '_')}.json"
+    race_id = next_race['id']
+    file_name = f"porra_{race_id}.json"
+    grid_file_name = f"grid/grid_{race_id}.json"
 
     # Leer la hora del evento desde el archivo JSON
     with open(grid_file_name, 'r') as file:
+        print(grid_file_name)
         grid_data = json.load(file)
-        event_time_str = grid_data['session']['date']  # Obtener la hora de inicio del primer evento
-        event_time = datetime.strptime(event_time_str, "%Y-%m-%dT%H:%M:%S%z")
-
+        if 'session' in grid_data and grid_data['session']:
+            if len(grid_data['session']) > 0:
+                event_time_str = grid_data['session']['date']  # Obtener la hora de inicio del primer evento
+                event_time = datetime.strptime(event_time_str, "%Y-%m-%dT%H:%M:%S%z")
+            else:
+                update.message.reply_text("No session information found in the grid file.")
+                return ConversationHandler.END
+        else:
+            update.message.reply_text("No session information found in the grid file.")
+            return ConversationHandler.END
     # Obtener la zona horaria del circuito, usar una predeterminada si no está presente
     circuit_timezone = next_race.get('timezone', TIMEZONE)
 
@@ -62,7 +81,7 @@ def porra(update: Update, context: CallbackContext) -> int:
     event_time_circuit_tz = event_time.astimezone(pytz.timezone(circuit_timezone))
 
     # Añadir una hora a la hora del evento
-    event_time_plus_one_hour = event_time_circuit_tz + timedelta(hours=1)
+    event_time_plus_one_hour = event_time_circuit_tz + timedelta(hours=3)
 
     # Obtener la hora actual en la zona horaria especificada en config.json
     current_time = datetime.now(pytz.timezone(TIMEZONE))
@@ -149,7 +168,7 @@ def race_third(update: Update, context: CallbackContext) -> int:
     race_name = context.user_data['race']
     prediction = {
         'user_id': user.id,
-        'username': user.username,
+        'username': user.first_name,
         'sprint_race': [context.user_data['sprint_first_pilot'], context.user_data['sprint_second_pilot'], context.user_data['sprint_third_pilot']],
         'race': [context.user_data['race_first_pilot'], context.user_data['race_second_pilot'], third_pilot]
     }
@@ -192,6 +211,7 @@ def help_command(update: Update, context: CallbackContext) -> None:
         "/porra - Register your bet for the next race.\n"
         "/puntuaciones - Show a list with the name and score data of the participants sorted from highest to lowest by points.\n"
         "/mrgrid - Show the lap times of the riders in the last qualifying session.\n"
+        "/rules - Show the rules of the betting system.\n"
         "/help - Show this help message.\n\n"
         "To register your bet, use the /porra command and follow the instructions to enter your predictions for the sprint race and the main race.\n"
         "Remember that modifications to the prediction are not allowed, choose your riders wisely."
@@ -221,12 +241,21 @@ def show_scores(update: Update, context: CallbackContext) -> None:
 # Función para manejar el comando /mrgrid
 def mrgrid(update: Update, context: CallbackContext) -> None:
     today = datetime.now()
+    valid_circuits = [
+        circuit for circuit in circuits
+        if datetime.strptime(circuit['date_start'].split('T')[0], '%Y-%m-%d') <= today <= datetime.strptime(circuit['date_start'].split('T')[0], '%Y-%m-%d') + timedelta(days=3)
+    ]
+    if not valid_circuits:
+        update.message.reply_text("No valid circuits found for the current date.")
+        return ConversationHandler.END
+
     next_race = min(
-        (circuit for circuit in circuits if datetime.strptime(circuit['date_start'].split('T')[0], '%Y-%m-%d') >= today),
+        valid_circuits,
         key=lambda x: datetime.strptime(x['date_start'].split('T')[0], '%Y-%m-%d') - today
     )
     circuit_name = next_race['name']  # Obtener el nombre del circuito de los argumentos
-    file_path = f"grid/grid_{circuit_name.replace(' ', '_')}.json"
+    race_id = next_race['id']
+    file_path = f"grid/grid_{race_id}.json"
 
     if not os.path.exists(file_path):
         update.message.reply_text(f"The file for the circuit: {circuit_name} was not found")
@@ -239,9 +268,14 @@ def mrgrid(update: Update, context: CallbackContext) -> None:
         update.message.reply_text(f"No classifications found in the file for the circuit: {circuit_name}")
         return
 
-    message = "Listado de pilotos y sus tiempos:\n"
+    message = f"Listado de pilotos y sus tiempos para el circuito {circuit_name}:\n"
+    
     for entry in data['classifications']:
-        message += f"{entry['position']}: {entry['full_name']} - {entry['best_lap_time']}\n"
+        if not data['classifications']:
+            message += "No hay datos todavía"
+            return
+        else:
+            message += f"{entry['position']}: {entry['full_name']} - {entry['best_lap_time']}\n"
 
     update.message.reply_text(message)
 
@@ -265,6 +299,20 @@ def update_data(update: Update, context: CallbackContext) -> None:
     if result.stderr:
         print(result.stderr)
 
+def rules(update: Update, context: CallbackContext) -> None:
+    rules_message = (
+        "The rules of the MotoGP betting system are as follows:\n\n"
+        "1. You can only make one prediction per event.\n"
+        "2. You must select the top 3 drivers in both the Sprint and the Race.\n"
+        "3. No changes to the prediction are allowed once it has been submitted.\n"
+        "4. Predictions must be submitted before the event start time; betting closes 3 hours after the start of MotoGP's Q2.\n"
+        "5. The points system works as follows:\n\n"
+        "- If a driver you selected finishes on the podium, you earn the points that the driver earns.\n"
+        "- If you correctly predict both the driver and their finishing position, you earn double points.\n"
+        "- If you don’t get anything right, maybe try something else.\n"
+    )
+    update.message.reply_text(rules_message)
+
 def main() -> None:
     updater = Updater(TOKEN)
     dispatcher = updater.dispatcher
@@ -274,8 +322,10 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("help", help_command))
     # Registro del comando /mrgrid en el dispatcher
     dispatcher.add_handler(CommandHandler("mrgrid", mrgrid))
-    # Registro del comando /mrgrid en el dispatcher
+    # Registro del comando /update_data en el dispatcher
     dispatcher.add_handler(CommandHandler("update_data", update_data))
+    # Registro del comando /rules en el dispatcher
+    dispatcher.add_handler(CommandHandler("rules", rules))
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('porra', porra)],

@@ -14,9 +14,14 @@ circuits = data['circuits']
 # Función para obtener información adicional del endpoint
 def get_additional_info(event_id, category_id):
     url = f"https://api.motogp.pulselive.com/motogp/v1/results/sessions?eventUuid={event_id}&categoryUuid={category_id}"
+    print(url)
     response = requests.get(url)
     if response.status_code == 200:
-        return response.json()
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            print(f"Failed to decode JSON response for event {event_id}")
+            return None
     else:
         print(f"Failed to retrieve data for event {event_id}: {response.status_code}")
         return None

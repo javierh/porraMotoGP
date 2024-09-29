@@ -10,12 +10,21 @@ MotoGP Prediction Bot is a Telegram bot that allows users to make predictions fo
 
 ## Changelog
 
+### v1.2.0 (2024-09-29)
+
+- Correction on results calculation
+- Correction on score calculation
+- Exception handling on some files
+- Added rules (and the command /rules) of the game to the bot
+- Updated data.json with more information
+
 ### v1.1.0 (2024-09-16)
 
 - Added Docker support with `Dockerfile` and `docker-compose.yml`.
 - Implemented admin-only command `/update_data`.
 - Improved error handling for missing sessions and races.
 - Translated all texts to English.
+- Added 
 
 ### v1.0.0 (2024-09-09)
 
@@ -36,7 +45,7 @@ MotoGP Prediction Bot is a Telegram bot that allows users to make predictions fo
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/yourusername/porraMotoGP.git
+   git clone https://github.com/javierh/porraMotoGP.git
    cd porraMotoGP
    ```
 

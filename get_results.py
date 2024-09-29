@@ -19,7 +19,7 @@ def get_session_classification(session_id):
 
 # Procesar cada circuito y sus sesiones
 for circuit in circuits:
-    circuit_name = circuit['name'].replace(' ', '_').replace('/', '_')
+    circuit_id = circuit['id']
     results = []
 
     if 'sessions' not in circuit:
@@ -47,7 +47,7 @@ for circuit in circuits:
                 })
 
     # Guardar los resultados en un archivo JSON
-    results_file = f"results/results_{circuit_name}.json"
+    results_file = f"results/results_{circuit_id}.json"
     with open(results_file, 'w') as f:
         json.dump(results, f, indent=4)
 
