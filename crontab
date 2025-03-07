@@ -1,0 +1,2 @@
+# Ejecutar el script import_data.sh cada hora
+0 * * * * /app/import_data.sh >> /var/log/cron.log 2>&1
