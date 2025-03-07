@@ -1,4 +1,14 @@
-pandas
-pytz
-requests
-telegram
+# Python dependencies for MotoGP Betting Bot
+
+# Telegram Bot API
+python-telegram-bot>=20.1
+
+# Google Sheets Integration
+gspread>=5.7.0
+google-auth>=2.16.0
+
+# Date and time handling
+pytz>=2022.7
+
+# Async support
+asyncio>=3.4.3

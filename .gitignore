@@ -1,7 +1,3 @@
 .gitignore
-config.json
-porras/*
-grid/*
-results/*
-results_puntuaciones.json
-data.json
+
+
