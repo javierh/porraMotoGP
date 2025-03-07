@@ -10,6 +10,12 @@ MotoGP Prediction Bot is a Telegram bot that allows users to make predictions fo
 
 ## Changelog
 
+### v1.3.0 (2025-03-07)
+
+- Refactor code to improve readability and stability.
+- Store user predictions in a google sheet.
+- Users can bet on sprint and race separately.
+
 ### v1.2.0 (2024-09-29)
 
 - Correction on results calculation
@@ -37,8 +43,7 @@ MotoGP Prediction Bot is a Telegram bot that allows users to make predictions fo
 
 - Python 3.9+
 - Telegram Bot API token
-- TimeZoneDB API key
-- Google Maps API key
+- Google Sheet API key
 
 ## Installation
 
@@ -62,24 +67,15 @@ MotoGP Prediction Bot is a Telegram bot that allows users to make predictions fo
     pip install -r requirements.txt
     ```
 
-4. Modify config_sample.json file with your configuration and rename to config.json
+4. Create your google_credentials.json file with the Google Sheet API key.
 
-5. Run the import data script:
+5. Upload the xlsx file to your Google Sheet and get the URL of the sheet to set it in the main.py file.
 
-   ```sh
-   bash import_data.sh
-   ```
+6. Set all the environment variables in the main.py file.
 
-6. Run the bot:
+7. Run the bot:
     Using Python
     
     ```sh
     python3 main.py
     ```
-
-Using Docker
-
-   ```sh
-   docker-compose build
-   docker-compose up -d
-   ```
