@@ -17,9 +17,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --- 1. Configuración Inicial ---
-TELEGRAM_BOT_TOKEN = 'XXXXXXXXXXXXXXXXXXXXXXXXXX' # ¡REEMPLAZA CON TU TOKEN DE BOT!
+TELEGRAM_BOT_TOKEN = 'XXXXXXXXXXXXXXXXX' # ¡REEMPLAZA CON TU TOKEN DE BOT!
 GOOGLE_SHEET_CREDENTIALS_FILE = './google_credentials.json' # ¡REEMPLAZA CON LA RUTA A TUS CREDENCIALES!
-GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
 GOOGLE_SHEET_NAME = 'Circuitos' # Nombre de la hoja dentro del documento (puedes ajustarlo si es necesario)
 TIMEZONE = pytz.timezone('Europe/Madrid') # Define tu Timezone principal. Ajusta si es necesario.
 
@@ -156,6 +156,22 @@ def guardar_usuario_en_gsheet(user):
         print(f"Error al guardar usuario en Google Sheets: {e}")
         return False
 
+def evento_interno_a_gsheet(tipo_evento):
+    """Convierte el tipo de evento del formato interno al usado en Google Sheets."""
+    if tipo_evento == 'sprint':
+        return 'SPR'
+    elif tipo_evento == 'carrera':
+        return 'RAC'
+    return tipo_evento  # Si ya está en formato correcto o es desconocido, lo devuelve tal cual
+
+def evento_gsheet_a_interno(tipo_evento):
+    """Convierte el tipo de evento del formato de Google Sheets al formato interno."""
+    if tipo_evento == 'SPR':
+        return 'sprint'
+    elif tipo_evento == 'RAC':
+        return 'carrera'
+    return tipo_evento  # Si ya está en formato correcto o es desconocido, lo devuelve tal cual
+
 def guardar_apuesta_en_gsheet(chat_id, evento_id, tipo_evento, podio):
     """Guarda una apuesta en la hoja 'Apuestas' de Google Sheets."""
     try:
@@ -169,6 +185,9 @@ def guardar_apuesta_en_gsheet(chat_id, evento_id, tipo_evento, podio):
         
         circuit_id = str(evento_id)  # Asegurar que siempre guardamos como string
         hashtag = evento.get('hashtag', '')
+        
+        # Convertir el tipo de evento al formato de Google Sheets
+        tipo_evento_gsheet = evento_interno_a_gsheet(tipo_evento)
         
         # Abrir la hoja Apuestas (crearla si no existe)
         try:
@@ -186,14 +205,14 @@ def guardar_apuesta_en_gsheet(chat_id, evento_id, tipo_evento, podio):
             row_num = cell.row
             row_data = apuestas_sheet.row_values(row_num)
             # Verificamos si es el mismo circuito y tipo de evento
-            if len(row_data) >= 7 and str(row_data[0]) == str(circuit_id) and row_data[6] == tipo_evento:
+            if len(row_data) >= 7 and str(row_data[0]) == str(circuit_id) and row_data[6] == tipo_evento_gsheet:
                 # Actualizar apuesta existente
                 apuestas_sheet.update(f'A{row_num}:H{row_num}',
                                    [[str(circuit_id), 
                                      str(chat_id),  # user_id
                                      hashtag, 
                                      podio[0], podio[1], podio[2],  # posiciones
-                                     tipo_evento,  # Nueva columna evento (carrera o sprint)
+                                     tipo_evento_gsheet,  # Nueva columna evento (SPR o RAC)
                                      datetime.now(TIMEZONE).isoformat()]])
                 return True
         
@@ -203,7 +222,7 @@ def guardar_apuesta_en_gsheet(chat_id, evento_id, tipo_evento, podio):
             str(chat_id),  # user_id
             hashtag,
             podio[0], podio[1], podio[2],  # posiciones
-            tipo_evento,  # Nueva columna evento (carrera o sprint)
+            tipo_evento_gsheet,  # Tipo de evento en formato Google Sheets
             datetime.now(TIMEZONE).isoformat()
         ])
         
@@ -230,10 +249,9 @@ def cargar_apuestas_desde_gsheet():
                 circuit_id = row.get('circuit_id')  # Aceptar circuit_id como string o int
                 user_id = int(row.get('user_id', 0))
                 
-                # Usar la nueva columna 'evento' si está disponible, o inferir del hashtag como fallback
-                tipo_evento = row.get('evento', None)
-                if not tipo_evento:
-                    tipo_evento = 'sprint' if 'sprint' in row.get('hashtag', '').lower() else 'carrera'
+                # Usar la columna 'evento' (SPR o RAC) y convertirla al formato interno
+                tipo_evento_gsheet = row.get('evento', '')
+                tipo_evento = evento_gsheet_a_interno(tipo_evento_gsheet)
                 
                 podio = [
                     row.get('posicion1', ''),
@@ -288,6 +306,34 @@ def bloquear_apuestas_evento(evento_id, tipo_evento, podio_q2):
 
 
 # --- 4. Funciones de Gestión de Fechas y Eventos ---
+def obtener_deadline_sesion(evento_id, tipo_evento):
+    """
+    Obtiene la fecha y hora límite para apostar desde la hoja Sesiones.
+    
+    Args:
+        evento_id: ID del evento/circuito
+        tipo_evento: 'sprint'/'SPR' o 'carrera'/'RAC'
+    
+    Returns:
+        datetime: Fecha y hora límite para apostar, o None si no se encontró
+    """
+    try:
+        sesiones = obtener_sesiones_desde_gsheet()
+        # Convertir al formato Google Sheets si es necesario
+        tipo_sesion = evento_interno_a_gsheet(tipo_evento)
+        
+        # Buscar la sesión correspondiente al evento y tipo
+        for sesion in sesiones:
+            if str(sesion.get('circuit_id', '')) == str(evento_id) and sesion.get('shortname') == tipo_sesion:
+                return sesion.get('date_start')  # Devuelve la fecha/hora de inicio de la sesión
+        
+        # Si no se encuentra, devolver None
+        print(f"No se encontró información de la sesión {tipo_sesion} para el evento {evento_id}")
+        return None
+    except Exception as e:
+        print(f"Error al obtener deadline desde Sesiones: {e}")
+        return None
+
 def obtener_evento_mas_proximo(eventos):
     """Determina el evento más próximo a la fecha y hora actual."""
     ahora = datetime.now(TIMEZONE)
@@ -304,17 +350,27 @@ def obtener_evento_mas_proximo(eventos):
 
 def es_tiempo_apuesta_abierto(evento, tipo_evento):
     """Verifica si el tiempo para apostar en un evento (Sprint o Carrera) está abierto."""
-    if not evento or not evento['date_start']: # Verificar si evento y date_start son válidos
+    if not evento: # Verificar si evento es válido
         return False
 
     ahora = datetime.now(TIMEZONE)
-    tiempo_limite_apuesta = evento['date_start'] - timedelta(minutes=15) # Límite: 15 minutos antes del inicio
-
-    if tipo_evento == 'sprint':
-        tiempo_limite_apuesta = evento['date_start'] - timedelta(minutes=45) # Límite sprint: 45 min antes (ejemplo)
-
-
-    return ahora < tiempo_limite_apuesta
+    
+    # Obtener el deadline desde la hoja Sesiones
+    deadline = obtener_deadline_sesion(evento['event_id'], tipo_evento)
+    
+    # Si no se encuentra el deadline en Sesiones, usar el método anterior como fallback
+    if not deadline:
+        # Fallback a la lógica anterior
+        if not evento['date_start']:
+            return False
+            
+        if tipo_evento == 'sprint' or tipo_evento == 'SPR':
+            return ahora < evento['date_start'] - timedelta(minutes=45)
+        else:  # carrera o RAC
+            return ahora < evento['date_start'] - timedelta(minutes=15)
+    
+    # Si tenemos deadline, comparar con la hora actual
+    return ahora < deadline
 
 def format_datetime_para_usuario(datetime_obj):
     """Formatea un objeto datetime para mostrar al usuario."""
@@ -433,10 +489,17 @@ async def proximo_evento_command(update, context):
     evento_proximo = obtener_evento_mas_proximo(eventos)
 
     if evento_proximo:
-        mensaje = f"Próximo Evento: *{escape_markdown_v2(evento_proximo['circuit_name'])}*\n"
+        # Verificar y asignar apuestas por defecto si el tiempo se ha cerrado
+        evento_id = evento_proximo['event_id']
+        if not es_tiempo_apuesta_abierto(evento_proximo, 'SPR'):
+            asignar_apuestas_q2_por_defecto(evento_id, 'sprint')
+        if not es_tiempo_apuesta_abierto(evento_proximo, 'RAC'):
+            asignar_apuestas_q2_por_defecto(evento_id, 'carrera')
+            
+        mensaje = f"Próximo Evento: *{escape_markdown_v2(evento_proximo['hashtag'])}*\n"
         mensaje += f"Comienza: {escape_markdown_v2(format_datetime_para_usuario(evento_proximo['date_start']))}\n"
         mensaje += f"Finaliza: {escape_markdown_v2(format_datetime_para_usuario(evento_proximo['date_end']))}\n"
-        mensaje += f"Hashtag: {escape_markdown_v2(evento_proximo['hashtag'])}"
+        mensaje += f"Circuito: {escape_markdown_v2(evento_proximo['circuit_name'])}"
         await update.message.reply_markdown_v2(mensaje)
     else:
         await update.message.reply_text("No hay próximos eventos programados en este momento.")
@@ -465,8 +528,14 @@ async def apostar_sprint_command_inicio(update, context):
     context.user_data['pilotos_disponibles_sprint'] = pilotos_disponibles # Guardar para validación
     context.user_data['podio_sprint_apuesta'] = [] # Inicializar la lista de podio
 
+    # Obtener el deadline específico para la sprint desde la hoja Sesiones
+    deadline = obtener_deadline_sesion(evento_proximo['event_id'], 'sprint')
+    if not deadline:
+        # Fallback a la fecha estimada
+        deadline = evento_proximo['date_start'] - timedelta(minutes=45)
+
     mensaje = f"Vas a apostar al podio de la Sprint Race de *{escape_markdown_v2(evento_proximo['circuit_name'])}*\\.\n\n"
-    mensaje += f"Tienes hasta: {escape_markdown_v2(format_datetime_para_usuario(evento_proximo['date_start'] - timedelta(minutes=45)))} para apostar\\.\n\n"
+    mensaje += f"Tienes hasta: {escape_markdown_v2(format_datetime_para_usuario(deadline))} para apostar\\.\n\n"
     mensaje += "Elige el *Piloto 1* para tu podio:"
     
     # Crear teclado con botones para cada piloto
@@ -604,7 +673,7 @@ async def apostar_carrera_command_inicio(update, context):
         return ConversationHandler.END
 
     if not es_tiempo_apuesta_abierto(evento_proximo, 'carrera'):
-        await update.message.reply_text(f"Lo siento, el tiempo para apostar en la Carrera de {evento_proximo['circuit_name']} ha terminado.")
+        await update.message.reply_text(f"Lo siento, el tiempo para apostar en la Carrera de {evento_proximo['hashtag']} ha terminado.")
         return ConversationHandler.END
 
     pilotos_disponibles = obtener_pilotos_desde_gsheet()
@@ -613,8 +682,14 @@ async def apostar_carrera_command_inicio(update, context):
     context.user_data['pilotos_disponibles_carrera'] = pilotos_disponibles # Guardar para validación
     context.user_data['podio_carrera_apuesta'] = [] # Inicializar la lista de podio
 
-    mensaje = f"Vas a apostar al podio de la *Carrera* de *{escape_markdown_v2(evento_proximo['circuit_name'])}*\\.\n\n"
-    mensaje += f"Tienes hasta: {escape_markdown_v2(format_datetime_para_usuario(evento_proximo['date_start'] - timedelta(minutes=15)))} para apostar\\.\n\n"
+    # Obtener el deadline específico para la carrera desde la hoja Sesiones
+    deadline = obtener_deadline_sesion(evento_proximo['event_id'], 'carrera')
+    if not deadline:
+        # Fallback a la fecha estimada
+        deadline = evento_proximo['date_start'] - timedelta(minutes=15)
+
+    mensaje = f"Vas a apostar al podio de la *Carrera* de *{escape_markdown_v2(evento_proximo['hashtag'])}*\\.\n\n"
+    mensaje += f"Tienes hasta: {escape_markdown_v2(format_datetime_para_usuario(deadline))} para apostar\\.\n\n"
     mensaje += "Elige el *Piloto 1* para tu podio:"
     
     # Crear teclado con botones para cada piloto
@@ -751,20 +826,28 @@ async def ver_apuesta_command(update, context):
 
     chat_id = update.message.chat_id
     evento_id = evento_proximo['event_id']
+    
+    # Verificar y asignar apuestas por defecto si el tiempo se ha cerrado
+    if not es_tiempo_apuesta_abierto(evento_proximo, 'SPR'):
+        asignar_apuestas_q2_por_defecto(evento_id, 'sprint')
+    if not es_tiempo_apuesta_abierto(evento_proximo, 'RAC'):
+        asignar_apuestas_q2_por_defecto(evento_id, 'carrera')
 
     apuesta_sprint = obtener_apuesta_usuario(chat_id, evento_id, 'sprint')
     apuesta_carrera = obtener_apuesta_usuario(chat_id, evento_id, 'carrera')
 
-    mensaje = f"Tu apuesta para *{escape_markdown_v2(evento_proximo['circuit_name'])}*:\n\n"
+    mensaje = f"Tu apuesta para *{escape_markdown_v2(evento_proximo['hashtag'])}*:\n\n"
 
     if apuesta_sprint:
-        mensaje += "*Sprint Race:* \n"
+        es_por_defecto = (apuesta_sprint == obtener_q2_resultados(evento_id))
+        mensaje += "*Sprint Race:* " + ("_(Q2 por defecto)_\n" if es_por_defecto else "\n")
         mensaje += f"🥇 1º: *{escape_markdown_v2(apuesta_sprint[0])}*\n🥈 2º: *{escape_markdown_v2(apuesta_sprint[1])}*\n🥉 3º: *{escape_markdown_v2(apuesta_sprint[2])}*\n\n"
     else:
         mensaje += "*Sprint Race:* _Sin apuesta realizada_\n\n"
 
     if apuesta_carrera:
-        mensaje += "*Carrera:* \n"
+        es_por_defecto = (apuesta_carrera == obtener_q2_resultados(evento_id))
+        mensaje += "*Carrera:* " + ("_(Q2 por defecto)_\n" if es_por_defecto else "\n")
         mensaje += f"🥇 1º: *{escape_markdown_v2(apuesta_carrera[0])}*\n🥈 2º: *{escape_markdown_v2(apuesta_carrera[1])}*\n🥉 3º: *{escape_markdown_v2(apuesta_carrera[2])}*\n"
     else:
         mensaje += "*Carrera:* _Sin apuesta realizada_\n"
@@ -779,8 +862,8 @@ async def podio_q2_command(update, context):
         await update.message.reply_text("No hay próximos eventos para mostrar podio de Q2.")
         return
 
-    podio_sprint_q2 = apuestas_q2_fallback.get(evento_proximo['event_id'], {}).get('sprint')
-    podio_carrera_q2 = apuestas_q2_fallback.get(evento_proximo['event_id'], {}).get('carrera')
+    podio_sprint_q2 = apuestas_q2_fallback.get(evento_proximo['event_id'], {}).get('SPR')
+    podio_carrera_q2 = apuestas_q2_fallback.get(evento_proximo['event_id'], {}).get('RAC')
 
     mensaje = f"Podio de Q2 \\(fallback\\) para *{escape_markdown_v2(evento_proximo['circuit_name'])}*:\n\n"
 
@@ -839,13 +922,17 @@ async def ejecutar_sprint_command(update, context):
         await update.message.reply_text("No hay eventos próximos para ejecutar resultados.")
         return ConversationHandler.END
     
-    context.user_data['evento_id'] = evento_proximo['event_id']
+    # Asignar apuestas Q2 por defecto si el tiempo de apuestas ha cerrado
+    evento_id = evento_proximo['event_id']
+    asignar_apuestas_q2_por_defecto(evento_id, 'sprint')
+    
+    context.user_data['evento_id'] = evento_id
     context.user_data['resultado_sprint'] = []
     
     pilotos_disponibles = obtener_pilotos_desde_gsheet()
     context.user_data['pilotos_disponibles_ejecutar_sprint'] = pilotos_disponibles
     
-    mensaje = f"Vas a registrar el resultado oficial de la Sprint Race de *{escape_markdown_v2(evento_proximo['circuit_name'])}*\\.\n\n"
+    mensaje = f"Vas a registrar el resultado oficial de la Sprint Race de *{escape_markdown_v2(evento_proximo['hashtag'])}*\\.\n\n"
     mensaje += "Selecciona el *Piloto que quedó en 1ª posición*:"
     
     keyboard = crear_teclado_pilotos(pilotos_disponibles, "ejecutar_sprint_p1_")
@@ -986,13 +1073,17 @@ async def ejecutar_carrera_command(update, context):
         await update.message.reply_text("No hay eventos próximos para ejecutar resultados.")
         return ConversationHandler.END
     
-    context.user_data['evento_id'] = evento_proximo['event_id']
+    # Asignar apuestas Q2 por defecto si el tiempo de apuestas ha cerrado
+    evento_id = evento_proximo['event_id']
+    asignar_apuestas_q2_por_defecto(evento_id, 'carrera')
+    
+    context.user_data['evento_id'] = evento_id
     context.user_data['resultado_carrera'] = []
     
     pilotos_disponibles = obtener_pilotos_desde_gsheet()
     context.user_data['pilotos_disponibles_ejecutar_carrera'] = pilotos_disponibles
     
-    mensaje = f"Vas a registrar el resultado oficial de la Carrera de *{escape_markdown_v2(evento_proximo['circuit_name'])}*\\.\n\n"
+    mensaje = f"Vas a registrar el resultado oficial de la Carrera de *{escape_markdown_v2(evento_proximo['hashtag'])}*\\.\n\n"
     mensaje += "Selecciona el *Piloto que quedó en 1ª posición*:"
     
     keyboard = crear_teclado_pilotos(pilotos_disponibles, "ejecutar_carrera_p1_")
@@ -1276,8 +1367,11 @@ def calcular_puntos_apuesta(apuesta, resultado_oficial, tipo_evento):
     if not apuesta or not resultado_oficial:
         return 0
     
+    # Convertir tipo_evento a formato interno si es necesario
+    tipo_evento_interno = evento_gsheet_a_interno(tipo_evento)
+    
     # Definir puntos por posición según tipo de evento
-    if tipo_evento == 'sprint':
+    if tipo_evento_interno == 'sprint':
         puntos_por_posicion = [12, 9, 7]
     else:  # carrera
         puntos_por_posicion = [25, 20, 16]
@@ -1383,6 +1477,99 @@ def calcular_y_actualizar_puntos_del_evento(evento_id, tipo_evento):
         actualizar_ranking_en_gsheet(user_id, puntos, evento_id)
     
     return True
+
+def obtener_usuarios_registrados():
+    """Obtiene la lista de usuarios registrados en la hoja 'Jugones'."""
+    try :
+        try:
+            jugones_sheet = gc.open_by_url(GOOGLE_SHEET_URL).worksheet('Jugones')
+        except gspread.exceptions.WorksheetNotFound:
+            print("La hoja 'Jugones' no existe todavía")
+            return []
+        
+        data_usuarios = jugones_sheet.get_all_records()
+        return [int(row['chat_id']) for row in data_usuarios if 'chat_id' in row and row['chat_id']]
+    except Exception as e:
+        print(f"Error al obtener usuarios registrados: {e}")
+        return []
+
+def obtener_q2_resultados(evento_id):
+    """Obtiene los resultados de Q2 para un evento específico desde la hoja 'Q2'."""
+    try:
+        try:
+            q2_sheet = gc.open_by_url(GOOGLE_SHEET_URL).worksheet('Q2')
+        except gspread.exceptions.WorksheetNotFound:
+            print("La hoja 'Q2' no existe todavía")
+            return None
+        
+        # Buscar los datos de Q2 para el evento específico
+        todas_filas = q2_sheet.get_all_records()
+        for fila in todas_filas:
+            if str(fila.get('circuit_id', '')) == str(evento_id):
+                return [
+                    fila.get('posicion1', ''),
+                    fila.get('posicion2', ''),
+                    fila.get('posicion3', '')
+                ]
+        
+        return None  # No se encontraron resultados para este evento
+    except Exception as e:
+        print(f"Error al obtener resultados Q2: {e}")
+        return None
+
+def asignar_apuestas_q2_por_defecto(evento_id, tipo_evento):
+    """
+    Asigna automáticamente las posiciones de Q2 como apuesta para los usuarios
+    registrados que no hicieron una apuesta para el evento y tipo específico.
+    
+    Args:
+        evento_id: ID del evento/circuito
+        tipo_evento: 'sprint' o 'carrera'
+    """
+    # Verificar si el tiempo para apostar se ha cerrado
+    eventos = obtener_eventos_desde_gsheet()
+    evento = next((e for e in eventos if str(e['event_id']) == str(evento_id)), None)
+    
+    if not evento:
+        print(f"No se encontró el evento {evento_id}")
+        return False
+    
+    # Convertir tipo_evento a formato Google Sheets para comparar
+    tipo_evento_gsheet = evento_interno_a_gsheet(tipo_evento)
+    if es_tiempo_apuesta_abierto(evento, tipo_evento):
+        print(f"El tiempo para apostar en {tipo_evento} aún está abierto")
+        return False
+    
+    # Obtener resultados de Q2
+    q2_resultados = obtener_q2_resultados(evento_id)
+    if not q2_resultados or '' in q2_resultados:
+        print(f"No hay resultados Q2 completos para el evento {evento_id}")
+        return False
+    
+    # Obtener usuarios registrados
+    usuarios = obtener_usuarios_registrados()
+    if not usuarios:
+        print("No hay usuarios registrados")
+        return False
+    
+    # Asignar apuestas por defecto a usuarios sin apuesta
+    contador = 0
+    for user_id in usuarios:
+        # Verificar si el usuario ya tiene una apuesta
+        tiene_apuesta = False
+        if user_id in apuestas:
+            for ev_id in apuestas[user_id]:
+                if str(ev_id) == str(evento_id) and tipo_evento in apuestas[user_id][ev_id]:
+                    tiene_apuesta = True
+                    break
+        
+        # Si no tiene apuesta, asignar Q2 como apuesta por defecto
+        if not tiene_apuesta:
+            guardar_apuesta(user_id, evento_id, tipo_evento, q2_resultados)
+            contador += 1
+    
+    print(f"Se han asignado apuestas por defecto (Q2) a {contador} usuarios para {evento['hashtag']} - {tipo_evento}")
+    return contador > 0
 
 async def main():
     """Inicia el bot y sus manejadores de comandos."""
