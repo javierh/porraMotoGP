@@ -3,11 +3,16 @@ import requests
 import json
 import sys
 import gspread
+import os
+from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 
+# Load environment variables
+load_dotenv()
+
 # Google Sheets configuration
-GOOGLE_SHEET_CREDENTIALS_FILE = './google_credentials.json'
-GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+GOOGLE_SHEET_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEET_CREDENTIALS_FILE', './google_credentials.json')
+GOOGLE_SHEET_URL = os.getenv('GOOGLE_SHEET_URL')
 
 def get_google_sheet_client():
     """Initialize and return Google Sheets client"""
@@ -178,4 +183,3 @@ def main():
 
 if __name__ == "__main__":
     main()
- 

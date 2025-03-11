@@ -1,5 +1,7 @@
 import asyncio
 import telegram
+import os
+from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, filters, ConversationHandler, CallbackContext, Application, PicklePersistence, CallbackQueryHandler
 import gspread
@@ -9,6 +11,9 @@ import pytz  # Para manejo de Timezones
 import math  # Para funciones matemáticas en la paginación
 import logging  # Para debug logging
 
+# Load environment variables
+load_dotenv()
+
 # Configure logging with more details
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -17,11 +22,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --- 1. Configuración Inicial ---
-TELEGRAM_BOT_TOKEN = 'XXXXXXXXXXXXXXXXX' # ¡REEMPLAZA CON TU TOKEN DE BOT!
-GOOGLE_SHEET_CREDENTIALS_FILE = './google_credentials.json' # ¡REEMPLAZA CON LA RUTA A TUS CREDENCIALES!
-GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-GOOGLE_SHEET_NAME = 'Circuitos' # Nombre de la hoja dentro del documento (puedes ajustarlo si es necesario)
-TIMEZONE = pytz.timezone('Europe/Madrid') # Define tu Timezone principal. Ajusta si es necesario.
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+GOOGLE_SHEET_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEET_CREDENTIALS_FILE', './google_credentials.json')
+GOOGLE_SHEET_URL = os.getenv('GOOGLE_SHEET_URL')
+GOOGLE_SHEET_NAME = os.getenv('GOOGLE_SHEET_NAME', 'Circuitos')
+TIMEZONE = pytz.timezone(os.getenv('TIMEZONE', 'Europe/Madrid'))
 
 # Estados para la conversación de apuestas (ConversationHandler)
 (APOSTAR_SPRINT_PILOTO1, APOSTAR_SPRINT_PILOTO2, APOSTAR_SPRINT_PILOTO3,
@@ -1142,7 +1147,7 @@ async def ejecutar_carrera_piloto2_callback(update, context):
         await query.edit_message_reply_markup(reply_markup=keyboard)
         return EJECUTAR_CARRERA_PILOTO2
     
-    piloto2 = callback_data[len(prefix):]
+    piloto2 = callback_data.len(prefix)
     pilotos_disponibles = context.user_data.get('pilotos_disponibles_ejecutar_carrera_p2', [])
     
     if piloto2 not in pilotos_disponibles:

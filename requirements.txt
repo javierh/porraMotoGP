@@ -1,14 +1,20 @@
 # Python dependencies for MotoGP Betting Bot
 
 # Telegram Bot API
-python-telegram-bot>=20.1
+python-telegram-bot>=20.0
 
 # Google Sheets Integration
-gspread>=5.7.0
-google-auth>=2.16.0
+gspread>=5.0
+google-auth>=2.0
 
 # Date and time handling
-pytz>=2022.7
+pytz>=2022.1
 
 # Async support
 asyncio>=3.4.3
+
+# Environment variables
+python-dotenv>=0.20.0
+
+# HTTP requests
+requests>=2.27.1

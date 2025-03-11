@@ -3,9 +3,13 @@ from google.oauth2.service_account import Credentials
 import logging
 import sys
 import os
+from dotenv import load_dotenv
 import json
 from datetime import datetime
 import pytz
+
+# Load environment variables
+load_dotenv()
 
 # Setup logging
 logging.basicConfig(
@@ -15,13 +19,13 @@ logging.basicConfig(
 logger = logging.getLogger("PuntosCalculator")
 
 # Configuración
-GOOGLE_SHEET_CREDENTIALS_FILE = './google_credentials.json'
-GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/XXXXXXXXXXXXXXXXXXXXXXX'
-TIMEZONE = pytz.timezone('Europe/Madrid')
+GOOGLE_SHEET_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEET_CREDENTIALS_FILE', './google_credentials.json')
+GOOGLE_SHEET_URL = os.getenv('GOOGLE_SHEET_URL')
+TIMEZONE = pytz.timezone(os.getenv('TIMEZONE', 'Europe/Madrid'))
 
-# Puntuación por posición
-PUNTOS_SPRINT = [12, 9, 7]  # Puntos para 1º, 2º, 3º en Sprint
-PUNTOS_CARRERA = [25, 20, 16]  # Puntos para 1º, 2º, 3º en Carrera
+# Parse scoring from comma-separated values
+PUNTOS_SPRINT = [int(p) for p in os.getenv('PUNTOS_SPRINT', '12,9,7').split(',')]
+PUNTOS_CARRERA = [int(p) for p in os.getenv('PUNTOS_CARRERA', '25,20,16').split(',')]
 
 def conectar_google_sheets():
     """Establece conexión con Google Sheets."""
