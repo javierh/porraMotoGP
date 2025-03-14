@@ -471,6 +471,8 @@ Estos son los comandos disponibles:
 /podio_q2 - Muestra el podio de Q2 que se usará si se cierran las apuestas (si aplica)
 /ranking - Muestra la clasificación actual de todos los jugadores
 /rules - Muestra las reglas del sistema de apuestas
+----------------
+Puedes consultar el código fuente en [GitHub](https://github.com/javierh/porraMotoGP)
     """
     await update.message.reply_text(help_text)
 
@@ -1136,7 +1138,7 @@ async def ejecutar_carrera_piloto2_callback(update, context):
     query = update.callback_query
     await query.answer()
     
-    callback_data = query.data
+    callback_data = y.data
     prefix = "ejecutar_carrera_p2_" + PILOTO_CALLBACK_PREFIX
     
     # Manejar navegación de páginas
@@ -1147,7 +1149,7 @@ async def ejecutar_carrera_piloto2_callback(update, context):
         await query.edit_message_reply_markup(reply_markup=keyboard)
         return EJECUTAR_CARRERA_PILOTO2
     
-    piloto2 = callback_data.len(prefix)
+    piloto2 = callback_data[len(prefix):]
     pilotos_disponibles = context.user_data.get('pilotos_disponibles_ejecutar_carrera_p2', [])
     
     if piloto2 not in pilotos_disponibles:
@@ -1314,6 +1316,7 @@ async def ranking_command(update, context):
         try:
             ranking_sheet = gc.open_by_url(GOOGLE_SHEET_URL).worksheet('Ranking')
             datos_ranking = ranking_sheet.get_all_records()
+            logger.info(f"Datos de ranking obtenidos: {len(datos_ranking)} registros")
         except gspread.exceptions.WorksheetNotFound:
             await update.message.reply_text("No hay datos de ranking disponibles todavía.")
             return
@@ -1322,42 +1325,80 @@ async def ranking_command(update, context):
             await update.message.reply_text("No hay datos de ranking disponibles todavía.")
             return
         
-        # Ordenar por puntuación (score) de mayor a menor
-        datos_ordenados = sorted(datos_ranking, key=lambda x: int(x.get('score', 0)), reverse=True)
+        # Ordenar por puntuación (score) de mayor a menor con manejo seguro de tipos
+        for jugador in datos_ranking:
+            try:
+                jugador['score'] = int(str(jugador.get('score', '0')))
+            except (ValueError, TypeError):
+                logger.error(f"Error al convertir score para jugador: {jugador}")
+                jugador['score'] = 0
+                
+            try:
+                jugador['points_last_circuit'] = int(str(jugador.get('points_last_circuit', '0')))
+            except (ValueError, TypeError):
+                logger.error(f"Error al convertir points_last_circuit para jugador: {jugador}")
+                jugador['points_last_circuit'] = 0
+        
+        datos_ordenados = sorted(datos_ranking, key=lambda x: x.get('score', 0), reverse=True)
         
         # Preparar mensaje con el ranking
         mensaje = "*🏆 Ranking actual 🏆*\n\n"
         
         # Intentar obtener nombres de usuario desde la hoja Jugones para ser más amigable
+        jugones_dict = {}
         try:
             jugones_sheet = gc.open_by_url(GOOGLE_SHEET_URL).worksheet('Jugones')
             datos_jugones = jugones_sheet.get_all_records()
-            jugones_dict = {int(j.get('chat_id', 0)): j.get('username', '') or j.get('first_name', '') for j in datos_jugones}
-        except:
-            jugones_dict = {}
+            for j in datos_jugones:
+                try:
+                    # Usar user_id en lugar de chat_id según la estructura actualizada
+                    user_id = int(str(j.get('user_id', '0')))
+                    
+                    # Primero intentar con nickname, luego combinar first_name + last_name
+                    nickname = j.get('nickname', '')
+                    first_name = j.get('first_name', '')
+                    last_name = j.get('last_name', '')
+                    
+                    if nickname:
+                        nombre_mostrar = nickname
+                    elif first_name or last_name:
+                        nombre_mostrar = f"{first_name} {last_name}".strip()
+                    else:
+                        nombre_mostrar = f"Usuario {user_id}"
+                        
+                    jugones_dict[user_id] = nombre_mostrar
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Error procesando datos del jugador: {e}")
+                    continue
+        except Exception as e:
+            logger.error(f"Error al obtener datos de jugones: {e}")
         
         # Construir la tabla de clasificación
         posicion = 1
         for jugador in datos_ordenados:
-            user_id = int(jugador.get('user_id', 0))
-            score = jugador.get('score', 0)
-            points_last = jugador.get('points_last_circuit', 0)
-            
-            # Intentar obtener nombre de usuario
-            nombre_usuario = jugones_dict.get(user_id, f"Usuario {user_id}")
-            
-            # Formatear línea del ranking
-            if posicion <= 3:  # Destacar top 3
-                emoji = ['🥇', '🥈', '🥉'][posicion-1]
-                mensaje += f"{emoji} *{posicion}. {escape_markdown_v2(nombre_usuario)}*: {score} pts \\(+{points_last} último\\)\n"
-            else:
-                mensaje += f"{posicion}\\. {escape_markdown_v2(nombre_usuario)}: {score} pts \\(+{points_last} último\\)\n"
-            
-            posicion += 1
+            try:
+                user_id = int(str(jugador.get('user_id', '0')))
+                score = jugador.get('score', 0)
+                points_last = jugador.get('points_last_circuit', 0)
+                
+                # Intentar obtener nombre de usuario
+                nombre_usuario = jugones_dict.get(user_id, f"Usuario {user_id}")
+                nombre_escapado = escape_markdown_v2(str(nombre_usuario))
+                
+                # Formatear línea del ranking
+                if posicion <= 3:  # Destacar top 3
+                    emoji = ['🥇', '🥈', '🥉'][posicion-1]
+                    mensaje += f"{emoji} *{posicion}\\. {nombre_escapado}*: {score} pts \\(\\+{points_last} último\\)\n"
+                else:
+                    mensaje += f"{posicion}\\. {nombre_escapado}: {score} pts \\(\\+{points_last} último\\)\n"
+                
+                posicion += 1
+            except Exception as e:
+                logger.error(f"Error al procesar jugador del ranking: {e}")
         
         await update.message.reply_markdown_v2(mensaje)
     except Exception as e:
-        print(f"Error al mostrar ranking: {e}")
+        logger.error(f"Error al mostrar ranking: {e}", exc_info=True)
         await update.message.reply_text("Hubo un error al obtener el ranking. Inténtalo más tarde.")
 
 def calcular_puntos_apuesta(apuesta, resultado_oficial, tipo_evento):
