@@ -340,18 +340,28 @@ def obtener_deadline_sesion(evento_id, tipo_evento):
         return None
 
 def obtener_evento_mas_proximo(eventos):
-    """Determina el evento más próximo a la fecha y hora actual."""
+    """Determina el evento actualmente en curso o el próximo a comenzar."""
     ahora = datetime.now(TIMEZONE)
-    evento_mas_proximo = None
-    min_diferencia = timedelta.max
-
+    
+    # Primero buscar si hay algún evento en curso actualmente
+    evento_en_curso = None
     for evento in eventos:
-        if evento['date_start']: # Asegurarse de que date_start no sea None
+        if (evento['date_start'] and evento['date_end'] and 
+            evento['date_start'] <= ahora <= evento['date_end']):
+            return evento  # Si hay un evento en curso, lo devolvemos inmediatamente
+    
+    # Si no hay evento en curso, buscamos el próximo
+    evento_proximo = None
+    min_diferencia = timedelta.max
+    
+    for evento in eventos:
+        if evento['date_start'] and evento['date_start'] > ahora:
             diferencia = evento['date_start'] - ahora
-            if diferencia >= timedelta(minutes=-30) and diferencia < min_diferencia: # Considerar eventos que empiezan en 30 min o en el futuro
+            if diferencia < min_diferencia:
                 min_diferencia = diferencia
-                evento_mas_proximo = evento
-    return evento_mas_proximo
+                evento_proximo = evento
+    
+    return evento_proximo
 
 def es_tiempo_apuesta_abierto(evento, tipo_evento):
     """Verifica si el tiempo para apostar en un evento (Sprint o Carrera) está abierto."""
