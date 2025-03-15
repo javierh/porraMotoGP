@@ -27,9 +27,7 @@ GOOGLE_SHEET_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEET_CREDENTIALS_FILE', './go
 GOOGLE_SHEET_URL = os.getenv('GOOGLE_SHEET_URL')
 GOOGLE_SHEET_NAME = os.getenv('GOOGLE_SHEET_NAME', 'Circuitos')
 TIMEZONE = pytz.timezone(os.getenv('TIMEZONE', 'Europe/Madrid'))
-admin_ids_string = os.getenv('ADMIN_IDS')
-ADMIN_IDS = [int(id_str.strip()) for id_str in admin_ids_string.split(',') if id_str.strip().isdigit()]
-logger.info(f"IDs de administradores cargados: {ADMIN_IDS}")
+
 # Estados para la conversación de apuestas (ConversationHandler)
 (APOSTAR_SPRINT_PILOTO1, APOSTAR_SPRINT_PILOTO2, APOSTAR_SPRINT_PILOTO3,
  APOSTAR_CARRERA_PILOTO1, APOSTAR_CARRERA_PILOTO2, APOSTAR_CARRERA_PILOTO3,
@@ -49,7 +47,7 @@ scopes = [
     'https://spreadsheets.google.com/feeds',
     'https://www.googleapis.com/auth/drive'
 ]
-creds = Credentials.from_service_account_file(GOOGLE_SHEET_CREDENTIALS_FILE, scopes)
+creds = Credentials.from_service_account_file(GOOGLE_SHEET_CREDENTIALS_FILE, scopes=scopes)
 gc = gspread.authorize(creds)
 sheet = gc.open_by_url(GOOGLE_SHEET_URL).worksheet(GOOGLE_SHEET_NAME)
 
@@ -484,15 +482,7 @@ Estos son los comandos disponibles:
 /ranking - Muestra la clasificación actual de todos los jugadores
 /rules - Muestra las reglas del sistema de apuestas
 """
-    # Añadir comandos de administrador si el usuario es administrador
-    user_id = update.effective_user.id
-    if user_id in ADMIN_IDS:
-        help_text += """
-Comandos de administrador:
-/ejecutar_sprint - Registrar el resultado oficial de la Sprint Race
-/ejecutar_carrera - Registrar el resultado oficial de la carrera
-/forzar_apuestas_q2 - Asignar manualmente apuestas Q2 por defecto a usuarios sin apuesta
-"""
+   
     help_text += """
 ----------------
 Puedes consultar el código fuente en [GitHub](https://github.com/javierh/porraMotoGP)
@@ -951,13 +941,6 @@ async def ejecutar_sprint_command(update, context):
     """Comando /ejecutar_sprint: Registra los resultados oficiales de la Sprint Race."""
     logger.info(f"Usuario {update.message.from_user.id} ha invocado /ejecutar_sprint")
     
-    # Verificar si el usuario tiene permisos (puedes implementar una lista de admins)
-    user_id = update.effective_user.id
-    admin_ids = [135572121]  # Lista de IDs de usuarios administradores
-    
-    if user_id not in admin_ids:
-        await update.message.reply_text("No tienes permisos para ejecutar este comando.")
-        return ConversationHandler.END
     
     eventos = obtener_eventos_desde_gsheet()
     evento_proximo = obtener_evento_mas_proximo(eventos)
@@ -1104,11 +1087,7 @@ async def ejecutar_carrera_command(update, context):
     
     # Verificar si el usuario tiene permisos (puedes implementar una lista de admins)
     user_id = update.effective_user.id
-    admin_ids = [135572121]  # Lista de IDs de usuarios administradores
-    
-    if user_id not in admin_ids:
-        await update.message.reply_text("No tienes permisos para ejecutar este comando.")
-        return ConversationHandler.END
+   
     
     eventos = obtener_eventos_desde_gsheet()
     evento_proximo = obtener_evento_mas_proximo(eventos)
@@ -1699,13 +1678,7 @@ def asignar_apuestas_q2_por_defecto(evento_id, tipo_evento, forzar=False):
 async def forzar_apuestas_q2_command(update, context):
     """Comando /forzar_apuestas_q2: Asigna manualmente las apuestas Q2 por defecto."""
     # Verificar si el usuario tiene permisos de administrador
-    user_id = update.effective_user.id
-    admin_ids = [135572121]  # Lista de IDs de usuarios administradores
-    
-    if user_id not in admin_ids:
-        await update.message.reply_text("No tienes permisos para ejecutar este comando.")
-        return
-    
+   
     eventos = obtener_eventos_desde_gsheet()
     evento_proximo = obtener_evento_mas_proximo(eventos)
     
