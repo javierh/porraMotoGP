@@ -82,43 +82,65 @@ def obtener_resultados_oficiales(spreadsheet):
     try:
         resultados_sheet = spreadsheet.worksheet('Resultados')
         data_resultados = resultados_sheet.get_all_records()
+        logger.info(f"Obtenidos {len(data_resultados)} registros de la hoja Resultados")
         
         # Organizar resultados por evento y tipo (SPR/RAC)
         resultados = {}
         for row in data_resultados:
-            circuit_id = row.get('circuit_id')
-            event_type = row.get('event_type')  # SPR o RAC
-            finished = row.get('finished', 0)
+            # Obtener IDs y datos clave - convertir a string para evitar problemas de tipo
+            circuit_id = str(row.get('circuit_id', ''))
+            event_name = str(row.get('event_name', ''))  # SPR o RAC
             
-            # Convertir finished a número si es posible (posición final)
+            # Limpiar event_name en caso de que tenga caracteres especiales o delimitadores
+            event_name = event_name.strip().upper()
+            
             try:
-                position = int(finished)
+                position = int(str(row.get('finished', '0')))
             except (ValueError, TypeError):
-                # Si no es un número, podría ser 'DNF', 'DNS', etc.
+                logger.debug(f"Posición no numérica para {row.get('rider_name')}: {row.get('finished')}")
                 continue
-                
+            
             # Solo nos interesan los 3 primeros lugares
             if position <= 3:
+                rider_name = str(row.get('rider_name', ''))
+                
+                if not circuit_id or not event_name or not rider_name:
+                    logger.warning(f"Datos incompletos en fila: {row}")
+                    continue
+                
+                logger.debug(f"Resultado oficial encontrado: Circuito {circuit_id}, Evento {event_name}, Pos {position}: {rider_name}")
+                
+                # Inicializar estructuras si no existen
                 if circuit_id not in resultados:
                     resultados[circuit_id] = {}
-                if event_type not in resultados[circuit_id]:
-                    resultados[circuit_id][event_type] = {}
+                if event_name not in resultados[circuit_id]:
+                    resultados[circuit_id][event_name] = {}
                 
                 # Guardamos el nombre del piloto en su posición
-                resultados[circuit_id][event_type][position] = row.get('rider_name')
+                resultados[circuit_id][event_name][position] = rider_name
         
         # Convertir el diccionario a listas ordenadas de podio
         podios_oficiales = {}
         for circuit_id, events in resultados.items():
             podios_oficiales[circuit_id] = {}
-            for event_type, positions in events.items():
+            for event_name, positions in events.items():
                 # Crear la lista de podio ordenada (posiciones 1, 2, 3)
-                podio = [positions.get(1, ""), positions.get(2, ""), positions.get(3, "")]
-                podios_oficiales[circuit_id][event_type] = podio
+                podio = [
+                    positions.get(1, ""), 
+                    positions.get(2, ""), 
+                    positions.get(3, "")
+                ]
+                
+                # Solo guardar podios completos
+                if all(podio):
+                    podios_oficiales[circuit_id][event_name] = podio
+                    logger.info(f"Podio oficial para {circuit_id} en {event_name}: {podio}")
+                else:
+                    logger.warning(f"Podio incompleto para {circuit_id} en {event_name}: {podio}")
         
         return podios_oficiales
     except Exception as e:
-        logger.error(f"Error al obtener resultados oficiales: {e}")
+        logger.error(f"Error al obtener resultados oficiales: {e}", exc_info=True)
         return {}
 
 def obtener_apuestas_usuarios(spreadsheet):
@@ -126,35 +148,51 @@ def obtener_apuestas_usuarios(spreadsheet):
     try:
         apuestas_sheet = spreadsheet.worksheet('Apuestas')
         data_apuestas = apuestas_sheet.get_all_records()
+        logger.info(f"Obtenidas {len(data_apuestas)} apuestas de usuarios")
         
         # Organizar apuestas por usuario, evento y tipo
         apuestas = {}
         for row in data_apuestas:
-            circuit_id = row.get('circuit_id')
-            user_id = row.get('user_id')
-            evento = row.get('evento')  # SPR o RAC
-            
-            # Crear la lista de podio apostado
-            podio = [
-                row.get('posicion1', ''),
-                row.get('posicion2', ''),
-                row.get('posicion3', '')
-            ]
-            
-            # Organizar en la estructura de datos
-            if user_id not in apuestas:
-                apuestas[user_id] = {}
-            if circuit_id not in apuestas[user_id]:
-                apuestas[user_id][circuit_id] = {}
+            try:
+                # Convertir IDs a string para evitar problemas de comparación
+                circuit_id = str(row.get('circuit_id', ''))
+                user_id = int(str(row.get('user_id', '0')))
+                evento = str(row.get('evento', '')).strip().upper()  # SPR o RAC
                 
-            apuestas[user_id][circuit_id][evento] = podio
+                if not circuit_id or not evento:
+                    logger.warning(f"Datos incompletos en apuesta: {row}")
+                    continue
+                
+                # Crear la lista de podio apostado
+                podio = [
+                    str(row.get('posicion1', '')),
+                    str(row.get('posicion2', '')),
+                    str(row.get('posicion3', ''))
+                ]
+                
+                # Verificar que el podio esté completo
+                if not all(podio):
+                    logger.warning(f"Apuesta con podio incompleto: {row}")
+                    continue
+                
+                logger.debug(f"Apuesta registrada: Usuario {user_id}, Circuito {circuit_id}, Evento {evento}, Podio: {podio}")
+                
+                # Organizar en la estructura de datos
+                if user_id not in apuestas:
+                    apuestas[user_id] = {}
+                if circuit_id not in apuestas[user_id]:
+                    apuestas[user_id][circuit_id] = {}
+                    
+                apuestas[user_id][circuit_id][evento] = podio
+            except (ValueError, KeyError) as e:
+                logger.error(f"Error al procesar apuesta: {e}, Fila: {row}")
         
         return apuestas
     except Exception as e:
-        logger.error(f"Error al obtener apuestas de usuarios: {e}")
+        logger.error(f"Error al obtener apuestas de usuarios: {e}", exc_info=True)
         return {}
 
-def calcular_puntos(apuesta, resultado_oficial, tipo_evento):
+def calcular_puntos_apuesta(apuesta, resultado_oficial, tipo_evento):
     """
     Calcula los puntos obtenidos en una apuesta según el resultado oficial.
     
@@ -171,6 +209,9 @@ def calcular_puntos(apuesta, resultado_oficial, tipo_evento):
         puntos_por_posicion = PUNTOS_SPRINT
     else:  # 'RAC'
         puntos_por_posicion = PUNTOS_CARRERA
+    
+    # Log detallado para depuración
+    logger.debug(f"Calculando puntos: Apuesta={apuesta}, Resultado={resultado_oficial}, Evento={tipo_evento}")
     
     puntos_totales = 0
     
@@ -190,29 +231,42 @@ def calcular_puntos(apuesta, resultado_oficial, tipo_evento):
                 puntos_totales += puntos_por_posicion[pos_real]
                 logger.debug(f"Acierto de piloto {piloto_apostado} en otra posición ({pos_real+1}): {puntos_por_posicion[pos_real]} puntos")
     
+    logger.debug(f"Total puntos calculados: {puntos_totales}")
     return puntos_totales
 
-def actualizar_ranking_sheet(spreadsheet, puntuacion_por_usuario):
+def actualizar_ranking_en_gsheet(spreadsheet, puntuacion_por_usuario):
     """Actualiza o crea la hoja de Ranking con los puntos calculados."""
     try:
         # Intentar obtener la hoja de Ranking o crearla si no existe
         try:
             ranking_sheet = spreadsheet.worksheet('Ranking')
+            logger.info("Hoja de Ranking encontrada, obteniendo datos actuales")
         except gspread.exceptions.WorksheetNotFound:
+            logger.info("Creando nueva hoja de Ranking")
             ranking_sheet = spreadsheet.add_worksheet(title='Ranking', rows=100, cols=3)
             ranking_sheet.append_row(['user_id', 'score', 'points_last_circuit'])
             logger.info("Hoja de Ranking creada")
         
         # Obtener los datos actuales de la hoja
         datos_actuales = ranking_sheet.get_all_records()
+        logger.info(f"Obtenidos {len(datos_actuales)} registros de ranking actuales")
         
         # Convertir a diccionario para fácil acceso
-        ranking_actual = {int(row.get('user_id', 0)): {
-            'score': int(row.get('score', 0)),
-            'points_last_circuit': int(row.get('points_last_circuit', 0))
-        } for row in datos_actuales}
+        ranking_actual = {}
+        for row in datos_actuales:
+            try:
+                user_id_str = str(row.get('user_id', '0'))
+                if user_id_str.isdigit():
+                    user_id = int(user_id_str)
+                    ranking_actual[user_id] = {
+                        'score': int(str(row.get('score', '0')).replace(',', '')),
+                        'points_last_circuit': int(str(row.get('points_last_circuit', '0')).replace(',', ''))
+                    }
+            except (ValueError, TypeError) as e:
+                logger.error(f"Error al procesar fila de ranking: {e}, fila: {row}")
         
         # Actualizar con la nueva puntuación
+        usuarios_actualizados = set()
         for user_id, puntos in puntuacion_por_usuario.items():
             if user_id in ranking_actual:
                 # Actualizar usuario existente
@@ -225,6 +279,8 @@ def actualizar_ranking_sheet(spreadsheet, puntuacion_por_usuario):
                     'score': puntos,
                     'points_last_circuit': puntos
                 }
+            usuarios_actualizados.add(user_id)
+            logger.info(f"Ranking actualizado para usuario {user_id}: +{puntos} puntos")
         
         # Preparar los datos para actualizar la hoja
         datos_actualizados = [['user_id', 'score', 'points_last_circuit']]
@@ -239,10 +295,10 @@ def actualizar_ranking_sheet(spreadsheet, puntuacion_por_usuario):
         ranking_sheet.clear()
         ranking_sheet.update('A1', datos_actualizados)
         
-        logger.info(f"Ranking actualizado correctamente para {len(puntuacion_por_usuario)} usuarios")
+        logger.info(f"Ranking actualizado correctamente para {len(usuarios_actualizados)} usuarios")
         return True
     except Exception as e:
-        logger.error(f"Error al actualizar la hoja de Ranking: {e}")
+        logger.error(f"Error al actualizar la hoja de Ranking: {e}", exc_info=True)
         return False
 
 def obtener_usuarios_y_nombres(spreadsheet):
@@ -303,12 +359,13 @@ def main():
                 for tipo_evento, apuesta in tipos_evento.items():
                     if tipo_evento in resultados_oficiales[circuit_id]:
                         resultado = resultados_oficiales[circuit_id][tipo_evento]
-                        puntos = calcular_puntos(apuesta, resultado, tipo_evento)
+                        puntos = calcular_puntos_apuesta(apuesta, resultado, tipo_evento)
                         
                         if puntos > 0:
                             puntos_usuario += puntos
                             nombre_evento = f"Circuit {circuit_id} - {tipo_evento}"
                             detalles_usuario.append(f"{nombre_evento}: {puntos} pts")
+                            logger.info(f"Usuario {user_id} suma {puntos} puntos por {tipo_evento} en circuito {circuit_id}")
             
         if puntos_usuario > 0:
             puntos_por_usuario[user_id] = puntos_usuario
@@ -316,7 +373,9 @@ def main():
     
     # Actualizar la hoja de Ranking
     if puntos_por_usuario:
-        actualizar_ranking_sheet(spreadsheet, puntos_por_usuario)
+        actualizar_ranking_en_gsheet(spreadsheet, puntos_por_usuario)
+    else:
+        logger.warning("No se calcularon puntos para ningún usuario")
     
     # Mostrar un resumen por consola
     logger.info(f"Puntos calculados para {len(puntos_por_usuario)} usuarios")
