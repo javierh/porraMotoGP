@@ -2,30 +2,63 @@
 import requests
 import json
 import sys
-import gspread
 import os
+import mysql.connector
+from mysql.connector import Error
 from dotenv import load_dotenv
-from google.oauth2.service_account import Credentials
 
 # Load environment variables
 load_dotenv()
 
-# Google Sheets configuration - using the same as in get_sessions.py
-GOOGLE_SHEET_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEET_CREDENTIALS_FILE', './google_credentials.json')
-GOOGLE_SHEET_URL = os.getenv('GOOGLE_SHEET_URL')
+# MySQL configuration
+DB_HOST = os.getenv('DB_HOST', '')
+DB_USER = os.getenv('DB_USER', '')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_NAME = os.getenv('DB_NAME', '')
 
-def get_google_sheet_client():
-    """Initialize and return Google Sheets client"""
+def get_db_connection():
+    """Initialize and return MySQL database connection"""
     try:
-        scopes = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        creds = Credentials.from_service_account_file(GOOGLE_SHEET_CREDENTIALS_FILE, scopes=scopes)
-        return gspread.authorize(creds)
-    except Exception as e:
-        print(f"Error initializing Google Sheets client: {e}", file=sys.stderr)
+        connection = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
+        )
+        if connection.is_connected():
+            return connection
+    except Error as e:
+        print(f"Error connecting to MySQL database: {e}", file=sys.stderr)
         return None
+
+def initialize_database():
+    """Create necessary tables if they don't exist"""
+    connection = get_db_connection()
+    if not connection:
+        return False
+    
+    cursor = connection.cursor()
+    try:
+        # Update the Circuitos table definition to match schema.sql
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Circuitos (
+                event_id VARCHAR(255) PRIMARY KEY,
+                circuit_name VARCHAR(255) NOT NULL,
+                date_start VARCHAR(255),
+                date_end VARCHAR(255),
+                hashtag VARCHAR(255)
+            )
+        ''')
+        
+        connection.commit()
+        print("Database table 'circuitos' verified/created")
+        return True
+    except Error as e:
+        print(f"Error initializing database: {e}", file=sys.stderr)
+        return False
+    finally:
+        cursor.close()
+        connection.close()
 
 def fetch_circuits():
     """Fetch circuit data from MotoGP API for 2025 season"""
@@ -45,60 +78,48 @@ def extract_circuit_data(circuits_json):
     
     for circuit in circuits_json:
         event_id = circuit.get('id', '')
-        circuit_id = circuit.get('circuit', {}).get('id', '')
         circuit_name = circuit.get('circuit', {}).get('name', '')
         date_start = circuit.get('date_start', '')
         date_end = circuit.get('date_end', '')
         hashtag = circuit.get('name', '')
         
-        circuit_data.append([event_id, circuit_id, circuit_name, date_start, date_end, hashtag])
+        # Removed circuit_id from the tuple to match the schema
+        circuit_data.append((event_id, circuit_name, date_start, date_end, hashtag))
     
     return circuit_data
 
-def save_to_google_sheets(circuit_data):
-    """Save the circuit data to Google Sheets"""
+def save_to_database(circuit_data):
+    """Save the circuit data to MySQL database"""
     if not circuit_data:
         print("No circuit data to save.")
         return False
     
     try:
-        gc = get_google_sheet_client()
-        if not gc:
+        connection = get_db_connection()
+        if not connection:
             return False
         
-        # Access the Google Sheet using URL instead of name
-        spreadsheet = gc.open_by_url(GOOGLE_SHEET_URL)
+        cursor = connection.cursor()
         
-        # First get all worksheet names to check what's available
-        all_worksheets = [ws.title for ws in spreadsheet.worksheets()]
-        print(f"Available worksheets: {all_worksheets}")
+        # Clear existing data
+        cursor.execute("DELETE FROM Circuitos")
         
-        # Use 'Circuitos' with capital C as shown in the worksheet list
-        worksheet_name = 'Circuitos'
+        # Updated insert query to match the schema
+        insert_query = """
+        INSERT INTO Circuitos (event_id, circuit_name, date_start, date_end, hashtag)
+        VALUES (%s, %s, %s, %s, %s)
+        """
         
-        # Get the existing worksheet without trying to create a new one
-        try:
-            worksheet = spreadsheet.worksheet(worksheet_name)
-            print(f"Found worksheet '{worksheet_name}', updating existing data...")
-            # Clear existing data but keep headers
-            if worksheet.row_count > 1:
-                worksheet.delete_rows(2, worksheet.row_count)
-        except gspread.exceptions.WorksheetNotFound:
-            print(f"Worksheet '{worksheet_name}' not found. Creating a new one.")
-            worksheet = spreadsheet.add_worksheet(title=worksheet_name, rows=100, cols=20)
-            # Add headers
-            headers = ['event_id', 'id', 'circuit_name', 'date_start', 'date_end', 'hashtag']
-            worksheet.append_row(headers)
+        cursor.executemany(insert_query, circuit_data)
+        connection.commit()
         
-        # Add circuit data
-        print(f"Appending {len(circuit_data)} rows of circuit data...")
-        worksheet.append_rows(circuit_data)
-        
-        print(f"Successfully saved {len(circuit_data)} circuits to Google Sheets")
+        print(f"Successfully saved {len(circuit_data)} circuits to database")
+        cursor.close()
+        connection.close()
         return True
     
-    except Exception as e:
-        print(f"Error saving circuits to Google Sheet: {e}", file=sys.stderr)
+    except Error as e:
+        print(f"Error saving circuits to database: {e}", file=sys.stderr)
         print(f"Exception type: {type(e)}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
@@ -106,6 +127,10 @@ def save_to_google_sheets(circuit_data):
 
 def main():
     """Main function to run the script"""
+    if not initialize_database():
+        print("Failed to initialize database.")
+        return
+        
     print("Fetching MotoGP 2025 circuit data...")
     circuits_json = fetch_circuits()
     
@@ -113,7 +138,7 @@ def main():
         circuit_data = extract_circuit_data(circuits_json)
         if circuit_data:
             print(f"Found {len(circuit_data)} circuits")
-            save_to_google_sheets(circuit_data)
+            save_to_database(circuit_data)
         else:
             print("No circuit data found")
     else:

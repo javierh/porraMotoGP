@@ -2,76 +2,108 @@
 import requests
 import json
 import sys
-import gspread
 import os
+import mysql.connector
+from mysql.connector import Error
 from dotenv import load_dotenv
-from google.oauth2.service_account import Credentials
 
 # Load environment variables
 load_dotenv()
 
-# Google Sheets configuration
-GOOGLE_SHEET_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEET_CREDENTIALS_FILE', './google_credentials.json')
-GOOGLE_SHEET_URL = os.getenv('GOOGLE_SHEET_URL')
+# MySQL configuration
+DB_HOST = os.getenv('DB_HOST', '')
+DB_USER = os.getenv('DB_USER', '')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_NAME = os.getenv('DB_NAME', '')
 
-def get_google_sheet_client():
-    """Initialize and return Google Sheets client"""
+def get_db_connection():
+    """Initialize and return MySQL database connection"""
     try:
-        scopes = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        creds = Credentials.from_service_account_file(GOOGLE_SHEET_CREDENTIALS_FILE, scopes=scopes)
-        return gspread.authorize(creds)
-    except Exception as e:
-        print(f"Error initializing Google Sheets client: {e}", file=sys.stderr)
+        connection = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
+        )
+        if connection.is_connected():
+            return connection
+    except Error as e:
+        print(f"Error connecting to MySQL database: {e}", file=sys.stderr)
         return None
 
-def get_race_sessions_from_sheet():
-    """Fetch race sessions (SPR or RAC) from 'Sesiones' sheet"""
+def initialize_database():
+    """Create necessary tables if they don't exist"""
+    connection = get_db_connection()
+    if not connection:
+        return False
+    
+    cursor = connection.cursor()
     try:
-        gc = get_google_sheet_client()
-        if not gc:
+        # Create the race results table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS resultados (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                circuit_id VARCHAR(255),
+                circuit_name VARCHAR(255),
+                event_id VARCHAR(255),
+                event_name VARCHAR(255),
+                rider_id VARCHAR(255),
+                rider_name VARCHAR(255),
+                position VARCHAR(50),
+                gap VARCHAR(255)
+            )
+        ''')
+        
+        connection.commit()
+        print("Database table 'resultados' verified/created")
+        return True
+    except Error as e:
+        print(f"Error initializing database: {e}", file=sys.stderr)
+        return False
+    finally:
+        cursor.close()
+        connection.close()
+
+def get_race_sessions_from_db():
+    """Fetch race sessions (SPR or RAC) from the database"""
+    try:
+        connection = get_db_connection()
+        if not connection:
             return None
         
-        spreadsheet = gc.open_by_url(GOOGLE_SHEET_URL)
-        sessions_sheet = spreadsheet.worksheet("Sesiones")
+        cursor = connection.cursor(dictionary=True)
         
-        # Get all sessions data (skipping header row)
-        all_data = sessions_sheet.get_all_values()
-        if len(all_data) <= 1:  # Only header or empty
-            print("No session data found in the Sesiones sheet.")
+        # Find race sessions (SPR or RAC)
+        query = """
+        SELECT circuit_id, circuit_name, session_id, shortname
+        FROM sesiones
+        WHERE shortname IN ('SPR', 'RAC')
+        """
+        
+        cursor.execute(query)
+        results = cursor.fetchall()
+        
+        if not results:
+            print("No race sessions found in the database.")
             return []
         
         race_sessions = []
-
-        # Skip header row (index 0)
-        for row in all_data[1:]:
-            if len(row) >= 4:  # Make sure we have all required columns
-                circuit_id = row[0]  # Column A: circuit_id 
-                circuit_name = row[1]  # Column B: circuit_name
-                session_id = row[2]  # Column C: session_id
-                shortname = row[3]  # Column D: shortname
-                
-                # Use shortname (column D) as event_name
-                event_id = session_id
-                event_name = shortname  # Use column D value as event_name
-                
-                # Check if this row has "SPR" or "RAC"
-                if shortname in ["SPR", "RAC"]:
-                    race_sessions.append({
-                        "circuit_id": circuit_id,
-                        "circuit_name": circuit_name,
-                        "event_id": event_id,
-                        "event_name": event_name,
-                        "session_id": session_id,
-                        "type": shortname
-                    })
-                    print(f"Found {shortname} session for: {circuit_name}")
+        for row in results:
+            race_sessions.append({
+                "circuit_id": row["circuit_id"],
+                "circuit_name": row["circuit_name"],
+                "event_id": row["session_id"],
+                "event_name": row["shortname"],
+                "session_id": row["session_id"],
+                "type": row["shortname"]
+            })
+            print(f"Found {row['shortname']} session for: {row['circuit_name']}")
         
+        cursor.close()
+        connection.close()
         return race_sessions
-    except Exception as e:
-        print(f"Error fetching race sessions from sheet: {e}", file=sys.stderr)
+    except Error as e:
+        print(f"Error fetching race sessions from database: {e}", file=sys.stderr)
         return None
 
 def fetch_session_results(session_id):
@@ -106,7 +138,7 @@ def extract_rider_data(results_json, circuit_id, circuit_name, event_id, event_n
                     # Get gap from gap.first
                     gap = rider.get('gap', {}).get('first', '')
                     
-                    rider_data.append([
+                    rider_data.append((
                         circuit_id,
                         circuit_name,
                         event_id,
@@ -115,7 +147,7 @@ def extract_rider_data(results_json, circuit_id, circuit_name, event_id, event_n
                         rider_name,
                         position,
                         gap
-                    ])
+                    ))
             else:
                 print(f"Classification data is not a list: {type(classification_data)}")
         # Handle other response formats we've seen before
@@ -147,7 +179,7 @@ def extract_rider_data(results_json, circuit_id, circuit_name, event_id, event_n
                     else:
                         gap = rider.get('gap', '')
                     
-                    rider_data.append([
+                    rider_data.append((
                         circuit_id,
                         circuit_name,
                         event_id,
@@ -156,7 +188,7 @@ def extract_rider_data(results_json, circuit_id, circuit_name, event_id, event_n
                         rider_name,
                         position,
                         gap
-                    ])
+                    ))
             else:
                 print("Could not find rider classification data in the response.")
                 print(f"Response keys: {list(results_json.keys())}")
@@ -177,7 +209,7 @@ def extract_rider_data(results_json, circuit_id, circuit_name, event_id, event_n
                 else:
                     gap = rider.get('gap', '')
                 
-                rider_data.append([
+                rider_data.append((
                     circuit_id,
                     circuit_name,
                     event_id,
@@ -186,7 +218,7 @@ def extract_rider_data(results_json, circuit_id, circuit_name, event_id, event_n
                     rider_name,
                     position,
                     gap
-                ])
+                ))
         else:
             print(f"Unexpected API response format: {type(results_json)}")
     except Exception as e:
@@ -196,60 +228,57 @@ def extract_rider_data(results_json, circuit_id, circuit_name, event_id, event_n
     
     return rider_data
 
-def save_to_google_sheets(rider_data):
-    """Save the rider data to Google Sheets"""
+def save_to_database(rider_data):
+    """Save the rider data to MySQL database"""
     if not rider_data:
         print("No rider data to save.")
         return False
     
     try:
-        gc = get_google_sheet_client()
-        if not gc:
+        connection = get_db_connection()
+        if not connection:
             return False
         
-        # Access the Google Sheet
-        spreadsheet = gc.open_by_url(GOOGLE_SHEET_URL)
+        cursor = connection.cursor()
         
-        # Check if "Resultados" worksheet exists, otherwise create it
-        try:
-            worksheet = spreadsheet.worksheet("Resultados")
-            print(f"Found worksheet 'Resultados', updating existing data...")
-            # Clear existing data but keep headers
-            if worksheet.row_count > 1:
-                worksheet.delete_rows(2, worksheet.row_count)
-        except gspread.exceptions.WorksheetNotFound:
-            print(f"Worksheet 'Resultados' not found. Creating a new one.")
-            worksheet = spreadsheet.add_worksheet(title="Resultados", rows=100, cols=20)
-            # Add headers
-            headers = [
-                'circuit_id', 'circuit_name', 'event_id', 'event_name',
-                'rider_id', 'rider_name', 'position', 'gap'
-            ]
-            worksheet.append_row(headers)
+        # Clear existing data
+        cursor.execute("DELETE FROM resultados")
         
-        # Add rider data
-        print(f"Appending {len(rider_data)} rows of rider data...")
-        worksheet.append_rows(rider_data)
+        # Insert new rider data
+        insert_query = """
+        INSERT INTO resultados (circuit_id, circuit_name, event_id, event_name,
+                           rider_id, rider_name, position, gap)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
         
-        print(f"Successfully saved {len(rider_data)} rider results to Google Sheets")
+        cursor.executemany(insert_query, rider_data)
+        connection.commit()
+        
+        print(f"Successfully saved {len(rider_data)} rider results to database")
+        cursor.close()
+        connection.close()
         return True
     
-    except Exception as e:
-        print(f"Error saving rider data to Google Sheet: {e}", file=sys.stderr)
+    except Error as e:
+        print(f"Error saving rider data to database: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
         return False
 
 def main():
     """Main function to run the script"""
-    print("Fetching race sessions from Google Sheet...")
-    race_sessions = get_race_sessions_from_sheet()
+    if not initialize_database():
+        print("Failed to initialize database.")
+        return
+        
+    print("Fetching race sessions from database...")
+    race_sessions = get_race_sessions_from_db()
     
     if not race_sessions:
         print("Failed to fetch race sessions or no race sessions found.")
         return
     
-    print(f"Found {len(race_sessions)} race sessions in the sheet.")
+    print(f"Found {len(race_sessions)} race sessions in the database.")
     
     all_rider_data = []
     
@@ -276,7 +305,7 @@ def main():
     
     if all_rider_data:
         print(f"Total rider results found: {len(all_rider_data)}")
-        save_to_google_sheets(all_rider_data)
+        save_to_database(all_rider_data)
     else:
         print("No rider data found for any race session")
 

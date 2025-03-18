@@ -2,3 +2,4 @@
 porreros
 .env
 google_credentials.json
+_pycache_/*

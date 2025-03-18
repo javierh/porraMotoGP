@@ -79,3 +79,18 @@ MotoGP Prediction Bot is a Telegram bot that allows users to make predictions fo
     ```sh
     python3 main.py
     ```
+
+# Porra MotoGP Bot
+
+Bot de Telegram para gestionar porras de MotoGP.
+
+## Requisitos
+
+- Python 3.8 o superior
+- MySQL 5.7 o superior
+- Cuenta de Telegram
+
+## Configuración
+
+1. Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+```

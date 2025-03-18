@@ -8,13 +8,16 @@ gspread>=5.0
 google-auth>=2.0
 
 # Date and time handling
-pytz>=2022.1
+pytz>=2021.3
 
 # Async support
 asyncio>=3.4.3
 
 # Environment variables
-python-dotenv>=0.20.0
+python-dotenv>=0.19.0
 
 # HTTP requests
 requests>=2.27.1
+
+# MySQL Connector
+mysql-connector-python>=8.0.27

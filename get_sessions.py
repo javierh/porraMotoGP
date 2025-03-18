@@ -2,64 +2,96 @@
 import requests
 import json
 import sys
-import gspread
 import os
+import mysql.connector
+from mysql.connector import Error
 from dotenv import load_dotenv
-from google.oauth2.service_account import Credentials
 
 # Load environment variables
 load_dotenv()
 
-# Google Sheets configuration
-GOOGLE_SHEET_CREDENTIALS_FILE = os.getenv('GOOGLE_SHEET_CREDENTIALS_FILE', './google_credentials.json')
-GOOGLE_SHEET_URL = os.getenv('GOOGLE_SHEET_URL')
+# MySQL configuration
+DB_HOST = os.getenv('DB_HOST', '')
+DB_USER = os.getenv('DB_USER', '')
+DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+DB_NAME = os.getenv('DB_NAME', '')
 
-def get_google_sheet_client():
-    """Initialize and return Google Sheets client"""
+def get_db_connection():
+    """Initialize and return MySQL database connection"""
     try:
-        scopes = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/drive'
-        ]
-        creds = Credentials.from_service_account_file(GOOGLE_SHEET_CREDENTIALS_FILE, scopes=scopes)
-        return gspread.authorize(creds)
-    except Exception as e:
-        print(f"Error initializing Google Sheets client: {e}", file=sys.stderr)
+        connection = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
+        )
+        if connection.is_connected():
+            return connection
+    except Error as e:
+        print(f"Error connecting to MySQL database: {e}", file=sys.stderr)
         return None
 
-def get_circuits_from_sheet():
-    """Fetch circuit data from 'Circuitos' sheet"""
+def initialize_database():
+    """Create necessary tables if they don't exist"""
+    connection = get_db_connection()
+    if not connection:
+        return False
+    
+    cursor = connection.cursor()
     try:
-        gc = get_google_sheet_client()
-        if not gc:
+        # Create the sessions table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Sesiones (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                circuit_id VARCHAR(255),
+                circuit_name VARCHAR(255),
+                session_id VARCHAR(255),
+                shortname VARCHAR(50),
+                date_start VARCHAR(255),
+                date_end VARCHAR(255),
+                category_id VARCHAR(255),
+                category_name VARCHAR(255)
+            )
+        ''')
+        
+        connection.commit()
+        print("Database tables verified/created")
+        return True
+    except Error as e:
+        print(f"Error initializing database: {e}", file=sys.stderr)
+        return False
+    finally:
+        cursor.close()
+        connection.close()
+
+def get_circuits_from_db():
+    """Fetch circuit data from the database"""
+    try:
+        connection = get_db_connection()
+        if not connection:
             return None
         
-        spreadsheet = gc.open_by_url(GOOGLE_SHEET_URL)
-        circuits_sheet = spreadsheet.worksheet("Circuitos")
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT event_id, circuit_name FROM Circuitos")
+        results = cursor.fetchall()
         
-        # Get all circuits data (skipping header row)
-        all_data = circuits_sheet.get_all_values()
-        if len(all_data) <= 1:  # Only header or empty
-            print("No circuit data found in the Circuitos sheet.")
+        if not results:
+            print("No circuit data found in the database.")
             return []
         
         circuits = []
-        # Skip header row (index 0)
-        for row in all_data[1:]:
-            if len(row) >= 3:  # Make sure we have all required columns
-                event_id = row[0]  # Column A: event_id
-                circuit_id = row[1]  # Column B: circuit_id
-                circuit_name = row[2]  # Column C: circuit_name
-                
-                circuits.append({
-                    "event_id": event_id,
-                    "circuit_id": circuit_id,
-                    "circuit_name": circuit_name
-                })
+        for row in results:
+            circuits.append({
+                "event_id": row["event_id"],
+                "circuit_id": row["event_id"],  # Use event_id as circuit_id
+                "circuit_name": row["circuit_name"]
+            })
         
+        cursor.close()
+        connection.close()
         return circuits
-    except Exception as e:
-        print(f"Error fetching circuits from sheet: {e}", file=sys.stderr)
+    except Error as e:
+        print(f"Error fetching circuits from database: {e}", file=sys.stderr)
         return None
 
 def fetch_sessions(event_uuid):
@@ -81,13 +113,16 @@ def extract_session_data(sessions_json, circuit_id, circuit_name):
     for session in sessions_json:
         session_id = session.get('id', '')
         shortname = session.get('type', '')
+        
+        # Get the raw date string, MySQL will store it as-is
         date_start = session.get('date', '')
         date_end = ''  # Leave empty as specified
+        
         category = session.get('category', {})
         category_id = category.get('id', '')
         category_name = category.get('name', '')
         
-        session_data.append([
+        session_data.append((
             circuit_id,
             circuit_name,
             session_id,
@@ -96,64 +131,61 @@ def extract_session_data(sessions_json, circuit_id, circuit_name):
             date_end,
             category_id,
             category_name
-        ])
+        ))
     
     return session_data
 
-def save_to_google_sheets(session_data):
-    """Save the session data to Google Sheets"""
+def save_to_database(session_data):
+    """Save the session data to MySQL database"""
     if not session_data:
         print("No session data to save.")
         return False
     
     try:
-        gc = get_google_sheet_client()
-        if not gc:
+        connection = get_db_connection()
+        if not connection:
             return False
         
-        # Access the Google Sheet
-        spreadsheet = gc.open_by_url(GOOGLE_SHEET_URL)
+        cursor = connection.cursor()
         
-        # Check if "Sesiones" worksheet exists, otherwise create it
-        try:
-            worksheet = spreadsheet.worksheet("Sesiones")
-            print(f"Found worksheet 'Sesiones', updating existing data...")
-            # Clear existing data but keep headers
-            if worksheet.row_count > 1:
-                worksheet.delete_rows(2, worksheet.row_count)
-        except gspread.exceptions.WorksheetNotFound:
-            print(f"Worksheet 'Sesiones' not found. Creating a new one.")
-            worksheet = spreadsheet.add_worksheet(title="Sesiones", rows=100, cols=20)
-            # Add headers
-            headers = [
-                'circuit_id', 'circuit_name', 'session_id', 'shortname',
-                'date_start', 'date_end', 'category_id', 'category_name'
-            ]
-            worksheet.append_row(headers)
+        # Clear existing data
+        cursor.execute("DELETE FROM Sesiones")
         
-        # Add session data
-        print(f"Appending {len(session_data)} rows of session data...")
-        worksheet.append_rows(session_data)
+        # Insert new session data
+        insert_query = """
+        INSERT INTO Sesiones (circuit_id, circuit_name, session_id, shortname, 
+                             date_start, date_end, category_id, category_name)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
         
-        print(f"Successfully saved {len(session_data)} sessions to Google Sheets")
+        cursor.executemany(insert_query, session_data)
+        connection.commit()
+        
+        print(f"Successfully saved {len(session_data)} sessions to database")
+        cursor.close()
+        connection.close()
         return True
     
-    except Exception as e:
-        print(f"Error saving sessions to Google Sheet: {e}", file=sys.stderr)
+    except Error as e:
+        print(f"Error saving sessions to database: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
         return False
 
 def main():
     """Main function to run the script"""
-    print("Fetching circuit data from Google Sheet...")
-    circuits = get_circuits_from_sheet()
+    if not initialize_database():
+        print("Failed to initialize database.")
+        return
+        
+    print("Fetching circuit data from database...")
+    circuits = get_circuits_from_db()
     
     if not circuits:
         print("Failed to fetch circuit data or no circuits found.")
         return
     
-    print(f"Found {len(circuits)} circuits in the sheet.")
+    print(f"Found {len(circuits)} circuits in the database.")
     
     all_session_data = []
     
@@ -177,7 +209,7 @@ def main():
     
     if all_session_data:
         print(f"Total sessions found: {len(all_session_data)}")
-        save_to_google_sheets(all_session_data)
+        save_to_database(all_session_data)
     else:
         print("No session data found for any circuit")
 
