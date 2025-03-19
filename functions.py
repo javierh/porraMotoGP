@@ -26,11 +26,15 @@ def get_mysql_connection():
         raise ValueError(error_msg)
     
     try:
+        # Use TCP connection instead of socket for Windows compatibility
         connection = mysql.connector.connect(
             host=host,
             user=user,
             password=password,
-            database=database
+            database=database,
+            # Explicitly set connection parameters for Windows compatibility
+            use_pure=True,
+            auth_plugin='mysql_native_password'
         )
         print(f"Conexión exitosa a MySQL: {host}")
         return connection

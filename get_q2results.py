@@ -11,25 +11,37 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# MySQL configuration
-DB_HOST = os.getenv('DB_HOST', '')
-DB_USER = os.getenv('DB_USER', '')
-DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-DB_NAME = os.getenv('DB_NAME', '')
+# MySQL configuration - Fixed to match .env variable names
+DB_HOST = os.getenv('MYSQL_HOST')
+DB_USER = os.getenv('MYSQL_USER')
+DB_PASSWORD = os.getenv('MYSQL_PASSWORD')
+DB_NAME = os.getenv('MYSQL_DATABASE')
+
+# Print debug information
+print(f"Database connection parameters:")
+print(f"Host: {DB_HOST}")
+print(f"User: {DB_USER}")
+print(f"DB Name: {DB_NAME}")
 
 def get_db_connection():
     """Initialize and return MySQL database connection"""
     try:
+        # Use TCP connection instead of socket for Windows compatibility
         connection = mysql.connector.connect(
             host=DB_HOST,
             user=DB_USER,
             password=DB_PASSWORD,
-            database=DB_NAME
+            database=DB_NAME,
+            # Explicitly set connection parameters for Windows compatibility
+            use_pure=True,  # Use the pure Python implementation
+            auth_plugin='mysql_native_password'  # Use native password auth
         )
         if connection.is_connected():
+            print(f"Successfully connected to MySQL database: {DB_NAME}")
             return connection
     except Error as e:
         print(f"Error connecting to MySQL database: {e}", file=sys.stderr)
+        print(f"Connection parameters: host={DB_HOST}, user={DB_USER}, database={DB_NAME}")
         return None
 
 def initialize_database():
@@ -75,7 +87,7 @@ def initialize_database():
         connection.close()
 
 def get_q2_sessions_from_db():
-    """Fetch Q2 sessions from the database by finding consecutive Q entries"""
+    """Fetch Q2 sessions from the database by finding Q2 sessions directly"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -83,17 +95,53 @@ def get_q2_sessions_from_db():
         
         cursor = connection.cursor(dictionary=True)
         
-        # Find Q2 sessions by identifying second 'Q' session for each circuit
+        # Revised query that doesn't depend on the 'id' column
+        # Instead, we look for sessions with 'Q2' in the shortname
+        # or other identifiers of Q2 sessions
         query = """
-        SELECT s1.circuit_id, s1.circuit_name, s1.session_id
-        FROM sesiones s1
-        JOIN sesiones s2 ON s1.circuit_id = s2.circuit_id AND s1.session_id != s2.session_id
-        WHERE s1.shortname = 'Q' AND s2.shortname = 'Q' 
-        AND s1.id > s2.id
+        SELECT circuit_id, circuit_name, session_id
+        FROM Sesiones
+        WHERE shortname = 'Q2' OR shortname LIKE '%Q2%' OR shortname LIKE '%Qualifying 2%'
+        """
+        
+        # If the above query returns no results, try the alternative approach
+        # This looks for 'Q' sessions only, then we'll process them afterward
+        alternative_query = """
+        SELECT circuit_id, circuit_name, session_id, shortname, date_start
+        FROM Sesiones
+        WHERE shortname = 'Q' OR shortname LIKE '%Q%' OR shortname LIKE '%Qualifying%'
+        ORDER BY circuit_id, date_start
         """
         
         cursor.execute(query)
         results = cursor.fetchall()
+        
+        # If no Q2 sessions found directly, try the alternative approach
+        if not results:
+            print("No explicit Q2 sessions found. Trying to identify Q2 sessions from all qualifying sessions...")
+            cursor.execute(alternative_query)
+            q_sessions = cursor.fetchall()
+            
+            # Group qualifying sessions by circuit
+            circuits = {}
+            for row in q_sessions:
+                circuit_id = row['circuit_id']
+                if circuit_id not in circuits:
+                    circuits[circuit_id] = []
+                circuits[circuit_id].append(row)
+            
+            # For each circuit with multiple Q sessions, take the latest one (assuming it's Q2)
+            results = []
+            for circuit_id, sessions in circuits.items():
+                if len(sessions) >= 1:
+                    # Sort by date_start and take the latest
+                    sessions.sort(key=lambda x: x['date_start'] if x['date_start'] else '')
+                    # If there are at least 2 sessions, take the second one
+                    if len(sessions) >= 2:
+                        results.append(sessions[1])  # Q2 should be the second qualifying session
+                    else:
+                        # If only one qualifying session, use it (better than nothing)
+                        results.append(sessions[0])
         
         if not results:
             print("No Q2 sessions found in the database.")

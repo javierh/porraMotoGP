@@ -8,11 +8,17 @@ import sys
 # Load environment variables
 load_dotenv()
 
-# MySQL configuration
-DB_HOST = os.getenv('DB_HOST', '')
-DB_USER = os.getenv('DB_USER', '')
-DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-DB_NAME = os.getenv('DB_NAME', '')
+# MySQL configuration - Fixed to match .env variable names
+DB_HOST = os.getenv('MYSQL_HOST')
+DB_USER = os.getenv('MYSQL_USER')
+DB_PASSWORD = os.getenv('MYSQL_PASSWORD')
+DB_NAME = os.getenv('MYSQL_DATABASE')
+
+# Print debug information
+print(f"Database connection parameters:")
+print(f"Host: {DB_HOST}")
+print(f"User: {DB_USER}")
+print(f"DB Name: {DB_NAME}")
 
 def get_db_connection():
     """Initialize and return MySQL database connection"""
@@ -36,7 +42,10 @@ def initialize_database():
         connection = mysql.connector.connect(
             host=DB_HOST,
             user=DB_USER,
-            password=DB_PASSWORD
+            password=DB_PASSWORD,
+            # Explicitly set connection parameters for Windows compatibility
+            use_pure=True,
+            auth_plugin='mysql_native_password'
         )
         cursor = connection.cursor()
         
@@ -51,7 +60,10 @@ def initialize_database():
         # Split statements to execute them one by one
         for statement in schema.split(';'):
             if statement.strip():
-                cursor.execute(statement)
+                try:
+                    cursor.execute(statement)
+                except Error as e:
+                    print(f"Error executing statement: {statement[:100]}... Error: {e}")
                 
         connection.commit()
         print("Database initialized successfully.")

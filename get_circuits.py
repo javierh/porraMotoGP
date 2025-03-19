@@ -10,25 +10,37 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# MySQL configuration
-DB_HOST = os.getenv('DB_HOST', '')
-DB_USER = os.getenv('DB_USER', '')
-DB_PASSWORD = os.getenv('DB_PASSWORD', '')
-DB_NAME = os.getenv('DB_NAME', '')
+# MySQL configuration - Fixed to match .env variable names
+DB_HOST = os.getenv('MYSQL_HOST')  # Changed from DB_HOST to MYSQL_HOST
+DB_USER = os.getenv('MYSQL_USER')  # Changed from DB_USER to MYSQL_USER
+DB_PASSWORD = os.getenv('MYSQL_PASSWORD')  # Changed from DB_PASSWORD to MYSQL_PASSWORD
+DB_NAME = os.getenv('MYSQL_DATABASE')  # Changed from DB_NAME to MYSQL_DATABASE
+
+# Print debug information
+print(f"Database connection parameters:")
+print(f"Host: {DB_HOST}")
+print(f"User: {DB_USER}")
+print(f"DB Name: {DB_NAME}")
 
 def get_db_connection():
     """Initialize and return MySQL database connection"""
     try:
+        # Use TCP connection instead of socket for Windows compatibility
         connection = mysql.connector.connect(
             host=DB_HOST,
             user=DB_USER,
             password=DB_PASSWORD,
-            database=DB_NAME
+            database=DB_NAME,
+            # Explicitly set connection parameters for Windows compatibility
+            use_pure=True,
+            auth_plugin='mysql_native_password'
         )
         if connection.is_connected():
+            print(f"Successfully connected to MySQL database: {DB_NAME}")
             return connection
     except Error as e:
         print(f"Error connecting to MySQL database: {e}", file=sys.stderr)
+        print(f"Connection parameters: host={DB_HOST}, user={DB_USER}, database={DB_NAME}")
         return None
 
 def initialize_database():
@@ -101,16 +113,40 @@ def save_to_database(circuit_data):
         
         cursor = connection.cursor()
         
-        # Clear existing data
-        cursor.execute("DELETE FROM Circuitos")
-        
-        # Updated insert query to match the schema
+        # Instead of deleting all records, use an UPSERT approach
+        # to handle the foreign key constraints
         insert_query = """
         INSERT INTO Circuitos (event_id, circuit_name, date_start, date_end, hashtag)
         VALUES (%s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            circuit_name = VALUES(circuit_name),
+            date_start = VALUES(date_start),
+            date_end = VALUES(date_end),
+            hashtag = VALUES(hashtag)
         """
         
+        # Keep track of all event IDs we're inserting
+        event_ids = [item[0] for item in circuit_data]
+        
+        # Execute the inserts/updates
         cursor.executemany(insert_query, circuit_data)
+        
+        # Now we can safely delete any circuits that aren't in our new data
+        # but only if they aren't referenced in Sesiones
+        if event_ids:
+            # Construct a parameterized query with the right number of placeholders
+            placeholders = ','.join(['%s'] * len(event_ids))
+            safe_delete_query = f"""
+            DELETE FROM Circuitos 
+            WHERE event_id NOT IN ({placeholders})
+            AND NOT EXISTS (
+                SELECT 1 FROM Sesiones WHERE Sesiones.circuit_id = Circuitos.event_id
+            )
+            """
+            cursor.execute(safe_delete_query, event_ids)
+            deleted_count = cursor.rowcount
+            print(f"Removed {deleted_count} old circuits that weren't referenced")
+            
         connection.commit()
         
         print(f"Successfully saved {len(circuit_data)} circuits to database")
