@@ -1404,9 +1404,9 @@ async def ranking_command(update, context):
                 # Formatear línea del ranking
                 if posicion <= 3:  # Destacar top 3
                     emoji = ['🥇', '🥈', '🥉'][posicion-1]
-                    mensaje += f"{emoji} *{posicion}\\. {nombre_escapado}*: {score} pts \\(\\+{points_last} último\\)\n"
+                    mensaje += f"{emoji} *{posicion}\\. {nombre_escapado}*: {score} pts \\(\\+{points_last} último evento\\)\n"
                 else:
-                    mensaje += f"{posicion}\\. {nombre_escapado}: {score} pts \\(\\+{points_last} último\\)\n"
+                    mensaje += f"{posicion}\\. {nombre_escapado}: {score} pts \\(\\+{points_last} último evento\\)\n"
                 
                 posicion += 1
             except Exception as e:
